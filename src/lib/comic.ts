@@ -231,7 +231,7 @@ const DEMO_IMAGES = [panel1, panel2, panel3, panel4];
 
 /** Panel art used by the preview build until a Gemini key is wired up. */
 export function demoImageFor(index: number): string {
-  return DEMO_IMAGES[index % DEMO_IMAGES.length];
+  return DEMO_IMAGES[index % DEMO_IMAGES.length]!;
 }
 
 const DEMO_SCRIPT: Array<Pick<Panel, "camera" | "prompt"> & { bubbles: Omit<Bubble, "id">[] }> = [
@@ -286,7 +286,7 @@ export function buildPanelPlan(pages: number, layout: LayoutId): Panel[] {
 
   for (let page = 1; page <= pages; page++) {
     for (let i = 0; i < perPage; i++) {
-      const seed = DEMO_SCRIPT[(page - 1 + i) % DEMO_SCRIPT.length];
+      const seed = DEMO_SCRIPT[(page - 1 + i) % DEMO_SCRIPT.length]!;
       panels.push({
         id: `p${page}-${i}`,
         page,
