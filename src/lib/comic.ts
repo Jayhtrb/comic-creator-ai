@@ -214,7 +214,7 @@ export interface Panel {
   index: number;
   camera: string;
   prompt: string;
-  image?: string;
+  image?: string | undefined;
   status: PanelStatus;
   bubbles: Bubble[];
 }
