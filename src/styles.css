@@ -254,3 +254,19 @@
   background-size: 200% 100%;
   animation: ink-sweep 1.6s linear infinite;
 }
+
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .paper-page {
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-after: always;
+  }
+}
