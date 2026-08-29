@@ -4,7 +4,6 @@ import {
   Check,
   Download,
   FileDown,
-  Gallery,
   Pencil,
   RefreshCw,
   Share2,
@@ -346,6 +345,4 @@ export function ComicStage({
   );
 }
 
-// Keep the icon import list honest for tree-shaking clarity.
 export type { ComicStageProps };
-void Gallery;
