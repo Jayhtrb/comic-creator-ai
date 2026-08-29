@@ -138,7 +138,7 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
           onChange={(e) => setStory(e.target.value)}
           placeholder={STORY_PLACEHOLDER}
           rows={6}
-          className="field-line resize-none px-0 text-base shadow-none focus-visible:ring-0"
+          className="field-line resize-none rounded-none border-0 border-b border-input bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
         />
         <div className="mt-4 flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">{story.length} characters</span>
@@ -320,7 +320,7 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
                 value={seed}
                 onChange={(e) => setSeed(e.target.value)}
                 placeholder="Leave blank for random"
-                className="field-line mt-1 h-9 shadow-none focus-visible:ring-0"
+                className="field-line mt-1 h-9 rounded-none border-0 border-b border-input bg-transparent px-0 shadow-none focus-visible:ring-0"
               />
               <p className="mt-2 text-xs text-muted-foreground">
                 Reuse a seed to get repeatable results across runs.
