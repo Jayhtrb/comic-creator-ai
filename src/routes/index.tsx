@@ -1,24 +1,142 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { AppHeader } from "@/components/app-header";
+import { ComicStage } from "@/components/comic-stage";
+import { StudioForm, type GenerationConfig } from "@/components/studio-form";
+import { buildPanelPlan, demoImageFor, type Panel } from "@/lib/comic";
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "ComicForge AI — Turn a story into a finished comic" },
+      {
+        name: "description",
+        content:
+          "Write a story, pick an art style, keep your characters consistent, and generate a full comic book you can edit and export as a PDF.",
+      },
+      { property: "og:title", content: "ComicForge AI — Turn a story into a finished comic" },
+      {
+        property: "og:description",
+        content:
+          "An AI comic studio: consistent characters, 12 art styles, editable speech bubbles, PDF export.",
+      },
+    ],
+  }),
+  component: Studio,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+type Phase = "studio" | "comic";
+
+function Studio() {
+  const [phase, setPhase] = useState<Phase>("studio");
+  const [config, setConfig] = useState<GenerationConfig | null>(null);
+  const [panels, setPanels] = useState<Panel[]>([]);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  /**
+   * Preview-stage generation. Panels resolve one at a time so the UI models the
+   * real streaming pipeline; swapping this for the Gemini calls only changes
+   * where `image` comes from.
+   */
+  const runGeneration = useCallback((plan: Panel[]) => {
+    plan.forEach((panel, i) => {
+      const t = setTimeout(
+        () => {
+          setPanels((prev) =>
+            prev.map((p) =>
+              p.id === panel.id ? { ...p, status: "ready", image: demoImageFor(i) } : p,
+            ),
+          );
+        },
+        700 + i * 650,
+      );
+      timers.current.push(t);
+    });
+  }, []);
+
+  function handleGenerate(next: GenerationConfig) {
+    const plan = buildPanelPlan(next.pages, next.layout);
+    setConfig(next);
+    setPanels(plan);
+    setPhase("comic");
+    runGeneration(plan);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function editBubble(panelId: string, bubbleId: string, text: string) {
+    setPanels((prev) =>
+      prev.map((p) =>
+        p.id === panelId
+          ? { ...p, bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, text } : b)) }
+          : p,
+      ),
+    );
+  }
+
+  function regenerate(panelId: string) {
+    setPanels((prev) =>
+      prev.map((p) => (p.id === panelId ? { ...p, status: "drawing", image: undefined } : p)),
+    );
+    toast("Redrawing that panel…");
+    const t = setTimeout(() => {
+      setPanels((prev) =>
+        prev.map((p) =>
+          p.id === panelId
+            ? { ...p, status: "ready", image: demoImageFor(Math.floor(Math.random() * 4)) }
+            : p,
+        ),
+      );
+    }, 1400);
+    timers.current.push(t);
+  }
+
+  function startOver() {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setPhase("studio");
+    setPanels([]);
+  }
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+
+      <main className="mx-auto max-w-[1200px] px-6 py-10 sm:py-14">
+        {phase === "studio" ? (
+          <>
+            <div data-print-hide className="mb-10 max-w-2xl">
+              <p className="mb-3 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+                Comic studio · powered by your own Gemini key
+              </p>
+              <h1 className="text-4xl font-bold leading-[1.1] sm:text-5xl">
+                Turn a story into a
+                <span className="text-primary"> finished comic.</span>
+              </h1>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Write the plot, upload your cast, choose a style. ComicForge breaks the story into
+                panels, keeps every character on-model, and hands you an editable, printable book.
+              </p>
+            </div>
+            <StudioForm onGenerate={handleGenerate} />
+          </>
+        ) : (
+          config && (
+            <ComicStage
+              title={config.story.slice(0, 60) + (config.story.length > 60 ? "…" : "")}
+              style={config.style}
+              layout={config.layout}
+              panels={panels}
+              onEditBubble={editBubble}
+              onRegenerate={regenerate}
+              onStartOver={startOver}
+            />
+          )
+        )}
+      </main>
     </div>
   );
 }
