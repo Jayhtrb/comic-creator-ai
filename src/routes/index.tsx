@@ -1,11 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Palette, Sparkles, Users } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
-import { ComicStage } from "@/components/comic-stage";
-import { StudioForm, type GenerationConfig } from "@/components/studio-form";
-import { buildPanelPlan, demoImageFor, type Panel } from "@/lib/comic";
+import { Button } from "@/components/ui/button";
+import { ART_STYLES } from "@/lib/comic";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,120 +20,86 @@ export const Route = createFileRoute("/")({
         content:
           "An AI comic studio: consistent characters, 12 art styles, editable speech bubbles, PDF export.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Studio,
+  component: Landing,
 });
 
-type Phase = "studio" | "comic";
-
-function Studio() {
-  const [phase, setPhase] = useState<Phase>("studio");
-  const [config, setConfig] = useState<GenerationConfig | null>(null);
-  const [panels, setPanels] = useState<Panel[]>([]);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  /**
-   * Preview-stage generation. Panels resolve one at a time so the UI models the
-   * real streaming pipeline; swapping this for the Gemini calls only changes
-   * where `image` comes from.
-   */
-  const runGeneration = useCallback((plan: Panel[]) => {
-    plan.forEach((panel, i) => {
-      const t = setTimeout(
-        () => {
-          setPanels((prev) =>
-            prev.map((p) =>
-              p.id === panel.id ? { ...p, status: "ready", image: demoImageFor(i) } : p,
-            ),
-          );
-        },
-        700 + i * 650,
-      );
-      timers.current.push(t);
-    });
-  }, []);
-
-  function handleGenerate(next: GenerationConfig) {
-    const plan = buildPanelPlan(next.pages, next.layout);
-    setConfig(next);
-    setPanels(plan);
-    setPhase("comic");
-    runGeneration(plan);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function editBubble(panelId: string, bubbleId: string, text: string) {
-    setPanels((prev) =>
-      prev.map((p) =>
-        p.id === panelId
-          ? { ...p, bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, text } : b)) }
-          : p,
-      ),
-    );
-  }
-
-  function regenerate(panelId: string) {
-    setPanels((prev) =>
-      prev.map((p) => (p.id === panelId ? { ...p, status: "drawing", image: undefined } : p)),
-    );
-    toast("Redrawing that panel…");
-    const t = setTimeout(() => {
-      setPanels((prev) =>
-        prev.map((p) =>
-          p.id === panelId
-            ? { ...p, status: "ready", image: demoImageFor(Math.floor(Math.random() * 4)) }
-            : p,
-        ),
-      );
-    }, 1400);
-    timers.current.push(t);
-  }
-
-  function startOver() {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-    setPhase("studio");
-    setPanels([]);
-  }
-
+function Landing() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="mx-auto max-w-[1200px] px-6 py-10 sm:py-14">
-        {phase === "studio" ? (
-          <>
-            <div data-print-hide className="mb-10 max-w-2xl">
-              <p className="mb-3 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-                Comic studio · powered by your own Gemini key
-              </p>
-              <h1 className="text-4xl font-bold leading-[1.1] sm:text-5xl">
-                Turn a story into a
-                <span className="text-primary"> finished comic.</span>
-              </h1>
-              <p className="mt-4 text-lg text-muted-foreground">
-Write the plot, upload your cast, choose a style. Comic Crafter breaks the story into
-                panels, keeps every character on-model, and hands you an editable, printable book.
-              </p>
+      <main className="mx-auto max-w-[1200px] px-6 py-14 sm:py-20">
+        <section className="max-w-3xl">
+          <p className="mb-3 inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+            AI comic studio · your own Gemini key
+          </p>
+          <h1 className="font-display text-4xl font-bold leading-[1.08] sm:text-6xl">
+            Turn a story into a
+            <span className="text-primary"> finished comic.</span>
+          </h1>
+          <p className="mt-5 text-lg text-muted-foreground">
+            Write the plot, upload your cast, choose a style. Comic Crafter breaks the story into
+            panels, keeps every character on-model, and hands you an editable, printable book.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg">
+              <Link to="/studio">Open the studio</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/auth">Sign in</Link>
+            </Button>
+          </div>
+        </section>
+
+        <section className="mt-16 grid gap-5 sm:grid-cols-3">
+          {[
+            {
+              icon: Sparkles,
+              title: "Script to panels",
+              body: "Your story is broken into paced panels with camera angles and dialogue.",
+            },
+            {
+              icon: Users,
+              title: "Consistent cast",
+              body: "Reference images keep every character on-model across the whole book.",
+            },
+            {
+              icon: Palette,
+              title: "12 art styles",
+              body: "Manga, noir, watercolor, webtoon, retro print and more — one click each.",
+            },
+          ].map(({ icon: Icon, title, body }) => (
+            <div
+              key={title}
+              className="rounded-xl border border-border bg-card p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
+            >
+              <Icon className="size-5 text-primary" />
+              <h2 className="mt-3 font-display text-lg font-semibold">{title}</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">{body}</p>
             </div>
-            <StudioForm onGenerate={handleGenerate} />
-          </>
-        ) : (
-          config && (
-            <ComicStage
-              title={config.story.slice(0, 60) + (config.story.length > 60 ? "…" : "")}
-              style={config.style}
-              layout={config.layout}
-              panels={panels}
-              onEditBubble={editBubble}
-              onRegenerate={regenerate}
-              onStartOver={startOver}
-            />
-          )
-        )}
+          ))}
+        </section>
+
+        <section className="mt-16">
+          <h2 className="font-display text-2xl font-bold">Pick a look</h2>
+          <ul className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+            {ART_STYLES.map((style) => (
+              <li key={style.id} className="overflow-hidden rounded-xl border border-border bg-card">
+                <img
+                  src={style.thumb}
+                  alt={`${style.name} art style example`}
+                  loading="lazy"
+                  className="aspect-square w-full object-cover"
+                />
+                <p className="px-3 py-2 text-sm font-medium">{style.name}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
     </div>
   );
