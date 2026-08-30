@@ -48,7 +48,10 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Welcome back.");
     void navigate({ to: "/studio" });
   }
@@ -62,20 +65,29 @@ function AuthPage() {
       options: { emailRedirectTo: `${window.location.origin}/studio` },
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Account created — check your inbox if confirmation is required.");
     void navigate({ to: "/studio" });
   }
 
   async function magicLink() {
-    if (!email) return toast.error("Enter your email first.");
+    if (!email) {
+      toast.error("Enter your email first.");
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/studio` },
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Magic link sent. Check your email.");
   }
 

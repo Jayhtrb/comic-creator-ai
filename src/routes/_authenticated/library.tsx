@@ -67,19 +67,19 @@ function LibraryPage() {
           </div>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((c) => (
+            {data.map((c: Record<string, unknown>) => (
               <li
-                key={c.id}
+                key={c.id as string}
                 className="rounded-xl border border-border bg-card p-5 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
               >
                 <p className="font-display text-lg font-semibold leading-snug">
-                  {c.title ?? "Untitled comic"}
+                  {(c.title as string) ?? "Untitled comic"}
                 </p>
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{c.story_prompt}</p>
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{c.story_prompt as string}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
-                    {ART_STYLES.find((s) => s.id === c.style_choice)?.name ?? c.style_choice} ·{" "}
-                    {c.num_pages} {c.num_pages === 1 ? "page" : "pages"}
+                    {ART_STYLES.find((s) => s.id === c.style_choice)?.name ?? (c.style_choice as string)} ·{" "}
+                    {c.num_pages as number} {c.num_pages === 1 ? "page" : "pages"}
                   </span>
                   <Button
                     variant="ghost"
