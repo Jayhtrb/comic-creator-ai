@@ -1,5 +1,5 @@
 /**
- * ComicForge AI — domain model, art-style catalog and demo data.
+ * Comic Crafter AI — domain model, art-style catalog and demo data.
  *
  * This module is pure data + types. No API calls live here; generation
  * orchestration is kept separate so the UI never talks to a provider directly.

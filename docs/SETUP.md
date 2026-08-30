@@ -1,4 +1,4 @@
-# ComicForge AI — credentials & deployment setup
+# Comic Crafter AI — credentials & deployment setup
 
 ## 1. Supabase (your own account)
 
@@ -25,7 +25,7 @@ Models:
 ## 3. GitHub
 
 Lovable pushes for you — no local git needed:
-**GitHub button (top-right) → Connect to GitHub → authorize → Create repository** (name it `comicforge-ai`).
+**GitHub button (top-right) → Connect to GitHub → authorize → Create repository** (name it `comic-crafter-ai`).
 After that every Lovable change is committed automatically; local clones push back and sync in.
 
 Branching: `main` as the deployed branch, feature branches for experiments. A long-lived `dev` branch adds merge overhead for a solo project.

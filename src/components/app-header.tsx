@@ -10,7 +10,7 @@ function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("comicforge-theme");
+    const stored = localStorage.getItem("comic-crafter-theme");
     const isDark = stored === "dark";
     setDark(isDark);
     setMounted(true);
@@ -20,7 +20,7 @@ function ThemeToggle() {
   function toggle() {
     const next = !dark;
     setDark(next);
-    localStorage.setItem("comicforge-theme", next ? "dark" : "light");
+    localStorage.setItem("comic-crafter-theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
   }
 
@@ -45,7 +45,7 @@ export function AppHeader() {
             <PencilRuler className="size-4.5" />
           </span>
           <span className="font-display text-lg font-bold tracking-tight">
-            ComicForge <span className="text-primary">AI</span>
+            Comic Crafter <span className="text-primary">AI</span>
           </span>
         </Link>
 
