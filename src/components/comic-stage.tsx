@@ -123,7 +123,7 @@ function PanelView({
     if (!panel.image) return;
     const a = document.createElement("a");
     a.href = panel.image;
-    a.download = `comicforge-page${panel.page}-panel${panel.index + 1}.jpg`;
+    a.download = `comic-crafter-page${panel.page}-panel${panel.index + 1}.jpg`;
     a.click();
   }
 

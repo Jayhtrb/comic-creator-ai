@@ -1,4 +1,4 @@
--- ComicForge AI — initial schema
+-- Comic Crafter AI — initial schema
 -- Run this in your own Supabase project: SQL Editor -> New query -> paste -> Run.
 -- Safe to run once. Every table gets GRANTs + RLS + owner-scoped policies.
 

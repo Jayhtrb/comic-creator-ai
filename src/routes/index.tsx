@@ -10,13 +10,13 @@ import { buildPanelPlan, demoImageFor, type Panel } from "@/lib/comic";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ComicForge AI — Turn a story into a finished comic" },
+      { title: "Comic Crafter AI — Turn a story into a finished comic" },
       {
         name: "description",
         content:
           "Write a story, pick an art style, keep your characters consistent, and generate a full comic book you can edit and export as a PDF.",
       },
-      { property: "og:title", content: "ComicForge AI — Turn a story into a finished comic" },
+      { property: "og:title", content: "Comic Crafter AI — Turn a story into a finished comic" },
       {
         property: "og:description",
         content:
@@ -117,7 +117,7 @@ function Studio() {
                 <span className="text-primary"> finished comic.</span>
               </h1>
               <p className="mt-4 text-lg text-muted-foreground">
-                Write the plot, upload your cast, choose a style. ComicForge breaks the story into
+Write the plot, upload your cast, choose a style. Comic Crafter breaks the story into
                 panels, keeps every character on-model, and hands you an editable, printable book.
               </p>
             </div>
