@@ -1,8 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Moon, PencilRuler, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 /** Light/dark toggle. Reads storage after mount to avoid hydration mismatch. */
 function ThemeToggle() {
@@ -36,9 +37,23 @@ function ThemeToggle() {
   );
 }
 
+const linkClass =
+  "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
+
 export function AppHeader() {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    void navigate({ to: "/" });
+  }
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+    <header
+      data-print-hide
+      className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur"
+    >
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
         <Link to="/" className="flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -50,18 +65,22 @@ export function AppHeader() {
         </Link>
 
         <nav className="flex items-center gap-1">
-          <Link
-            to="/"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <Link to="/studio" className={linkClass}>
             Studio
           </Link>
-          <a
-            href="#library"
-            className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block"
-          >
-            Characters
-          </a>
+          <Link to="/library" className={`${linkClass} hidden sm:block`}>
+            My comics
+          </Link>
+          {!loading &&
+            (user ? (
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                Sign out
+              </Button>
+            ) : (
+              <Button asChild size="sm">
+                <Link to="/auth">Sign in</Link>
+              </Button>
+            ))}
           <ThemeToggle />
         </nav>
       </div>
