@@ -7,8 +7,8 @@ import { createClient } from "@supabase/supabase-js";
  * (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY), never from the
  * secret store, because Vite inlines them at build time.
  */
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string;
+const supabasePublishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string;
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error(
