@@ -23,6 +23,14 @@ export const Route = createFileRoute("/_authenticated/library")({
   component: LibraryPage,
 });
 
+interface ComicRow {
+  id: string;
+  title: string | null;
+  story_prompt: string;
+  style_choice: string;
+  num_pages: number;
+}
+
 function LibraryPage() {
   const fetchComics = useServerFn(listComics);
   const removeComic = useServerFn(deleteComic);
@@ -67,25 +75,25 @@ function LibraryPage() {
           </div>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((c: Record<string, unknown>) => (
+            {(data as ComicRow[]).map((c) => (
               <li
-                key={c.id as string}
+                key={c.id}
                 className="rounded-xl border border-border bg-card p-5 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
               >
                 <p className="font-display text-lg font-semibold leading-snug">
-                  {(c.title as string) ?? "Untitled comic"}
+                  {c.title ?? "Untitled comic"}
                 </p>
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{c.story_prompt as string}</p>
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{c.story_prompt}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
-                    {ART_STYLES.find((s) => s.id === c.style_choice)?.name ?? (c.style_choice as string)} ·{" "}
-                    {c.num_pages as number} {c.num_pages === 1 ? "page" : "pages"}
+                    {ART_STYLES.find((s) => s.id === c.style_choice)?.name ?? c.style_choice} ·{" "}
+                    {c.num_pages} {c.num_pages === 1 ? "page" : "pages"}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     aria-label="Delete comic"
-                    onClick={() => del.mutate(c.id as string)}
+                    onClick={() => del.mutate(c.id)}
                   >
                     <Trash2 className="size-4" />
                   </Button>
