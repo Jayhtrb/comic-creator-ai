@@ -120,6 +120,8 @@ function Studio() {
             camera: panel.camera,
             styleFragment: style.promptFragment,
             characters: next.characters,
+            refPaths: next.refPaths,
+
             ...(next.seed ? { seed: next.seed } : {}),
           },
         });
@@ -130,15 +132,30 @@ function Studio() {
     });
   }
 
-  function editBubble(panelId: string, bubbleId: string, text: string) {
+  function patchBubble(panelId: string, bubbleId: string, patch: Partial<Panel["bubbles"][number]>) {
     setPanels((prev) =>
       prev.map((p) =>
         p.id === panelId
-          ? { ...p, bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, text } : b)) }
+          ? {
+              ...p,
+              bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, ...patch } : b)),
+            }
           : p,
       ),
     );
   }
+
+  /** Drops manual placements so the auto safe-corner layout takes over again. */
+  function resetBubbles(panelId: string) {
+    setPanels((prev) =>
+      prev.map((p) =>
+        p.id === panelId
+          ? { ...p, bubbles: p.bubbles.map((b) => ({ ...b, pinned: false })) }
+          : p,
+      ),
+    );
+  }
+
 
   async function regenerate(panelId: string) {
     const panel = panels.find((p) => p.id === panelId);
@@ -154,6 +171,8 @@ function Studio() {
           camera: panel.camera,
           styleFragment: style.promptFragment,
           characters: config.characters,
+          refPaths: config.refPaths,
+
           seed: Math.random().toString(36).slice(2, 10),
         },
       });
@@ -246,7 +265,9 @@ function Studio() {
                 layout={config.layout}
                 panels={panels}
                 scripting={scripting}
-                onEditBubble={editBubble}
+                onPatchBubble={patchBubble}
+                onResetBubbles={resetBubbles}
+
                 onRegenerate={regenerate}
                 onStartOver={startOver}
               />

@@ -4,11 +4,13 @@ import {
   Check,
   Download,
   FileDown,
+  Move,
   Pencil,
   RefreshCw,
+  RotateCcw,
   Share2,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +22,8 @@ interface ComicStageProps {
   style: string;
   layout: LayoutId;
   panels: Panel[];
-  onEditBubble: (panelId: string, bubbleId: string, text: string) => void;
+  onPatchBubble: (panelId: string, bubbleId: string, patch: Partial<Bubble>) => void;
+  onResetBubbles: (panelId: string) => void;
   onRegenerate: (panelId: string) => void;
   onStartOver: () => void;
   /** True while pass 1 (the script) is still being written and no panels exist yet. */
@@ -39,9 +42,8 @@ function bubbleShape(kind: Bubble["kind"]) {
 
 /**
  * Bubbles are snapped into safe edge slots instead of the model's raw x/y, so
- * they never land on top of faces or the middle of the artwork.
- * Captions hug the top-left, dialogue alternates across the top corners and
- * spills to the bottom corners only when a panel is chatty.
+ * they never land on top of faces or the middle of the artwork — until the
+ * reader drags one, after which its own x/y (percent of the panel) wins.
  */
 const BUBBLE_SLOTS: Array<React.CSSProperties> = [
   { top: "4%", left: "4%" },
@@ -72,20 +74,40 @@ function bubbleSlots(bubbles: Bubble[]): Array<{ bubble: Bubble; slot: React.CSS
     cursor = pick + 1;
   });
 
-  return out;
+  // Manually positioned bubbles ignore the slot grid entirely.
+  return out.map((entry) =>
+    entry.bubble.pinned
+      ? {
+          bubble: entry.bubble,
+          slot: {
+            left: `${entry.bubble.x}%`,
+            top: `${entry.bubble.y}%`,
+            transform: "translate(-50%, -50%)",
+          } as React.CSSProperties,
+        }
+      : entry,
+  );
 }
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 function SpeechBubble({
   bubble,
   slot,
+  containerRef,
   onChange,
+  onMove,
 }: {
   bubble: Bubble;
   slot: React.CSSProperties;
+  containerRef: React.RefObject<HTMLElement | null>;
   onChange: (text: string) => void;
+  onMove: (x: number, y: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [draft, setDraft] = useState(bubble.text);
+  const movedRef = useRef(false);
 
   function commit() {
     setEditing(false);
@@ -97,9 +119,43 @@ function SpeechBubble({
     }
   }
 
-  return (
-    <div className="absolute z-10 max-w-[38%]" style={slot}>
+  function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    if (editing) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    movedRef.current = false;
+    const startX = event.clientX;
+    const startY = event.clientY;
+
+    function move(e: PointerEvent) {
+      if (!movedRef.current && Math.hypot(e.clientX - startX, e.clientY - startY) < 4) return;
+      movedRef.current = true;
+      setDragging(true);
+      onMove(
+        clamp(((e.clientX - rect!.left) / rect!.width) * 100, 4, 96),
+        clamp(((e.clientY - rect!.top) / rect!.height) * 100, 6, 94),
+      );
+    }
+
+    function up() {
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", up);
+      setDragging(false);
+      if (!movedRef.current) setEditing(true);
+    }
+
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", up);
+  }
+
+  return (
+    <div
+      className={cn("absolute z-10 max-w-[38%]", dragging && "z-30 select-none")}
+      style={slot}
+    >
       {editing ? (
         <div className="flex items-start gap-1">
           <textarea
@@ -127,15 +183,19 @@ function SpeechBubble({
       ) : (
         <button
           type="button"
-          onClick={() => setEditing(true)}
-          title="Click to edit this text"
+          onPointerDown={handlePointerDown}
+          title="Drag to reposition · click to edit"
           className={cn(
-            "group/bubble border-2 border-ink px-3 py-2 text-left leading-tight shadow-[2px_2px_0_var(--color-ink)] transition-transform hover:scale-[1.03]",
+            "group/bubble touch-none border-2 border-ink px-3 py-2 text-left leading-tight shadow-[2px_2px_0_var(--color-ink)] transition-transform",
+            dragging ? "cursor-grabbing scale-[1.04]" : "cursor-grab hover:scale-[1.03]",
             bubbleShape(bubble.kind),
           )}
         >
           {bubble.text}
-          <Pencil className="ml-1 inline size-2.5 opacity-0 transition-opacity group-hover/bubble:opacity-70" />
+          <Move
+            data-print-hide
+            className="ml-1 inline size-2.5 opacity-0 transition-opacity group-hover/bubble:opacity-70"
+          />
         </button>
       )}
     </div>
@@ -152,13 +212,18 @@ function PanelSkeleton() {
 
 function PanelView({
   panel,
-  onEditBubble,
+  onPatchBubble,
+  onResetBubbles,
   onRegenerate,
 }: {
   panel: Panel;
-  onEditBubble: (bubbleId: string, text: string) => void;
+  onPatchBubble: (bubbleId: string, patch: Partial<Bubble>) => void;
+  onResetBubbles: () => void;
   onRegenerate: () => void;
 }) {
+  const frameRef = useRef<HTMLElement | null>(null);
+  const hasPinned = panel.bubbles.some((b) => b.pinned);
+
   function downloadPanel() {
     if (!panel.image) return;
     const a = document.createElement("a");
@@ -168,21 +233,24 @@ function PanelView({
   }
 
   return (
-    <figure className="group relative aspect-[8/5] overflow-hidden rounded-md">
+    <figure ref={frameRef} className="group relative aspect-[8/5] overflow-hidden rounded-md">
       {panel.status === "ready" && panel.image ? (
         <>
           <img
             src={panel.image}
             alt={`${panel.camera}: ${panel.prompt}`}
             loading="lazy"
-            className="size-full rounded-md border-2 border-ink object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            draggable={false}
+            className="size-full rounded-md border-2 border-ink object-cover"
           />
           {bubbleSlots(panel.bubbles).map(({ bubble: b, slot }) => (
             <SpeechBubble
               key={b.id}
               bubble={b}
               slot={slot}
-              onChange={(text) => onEditBubble(b.id, text)}
+              containerRef={frameRef}
+              onChange={(text) => onPatchBubble(b.id, { text })}
+              onMove={(x, y) => onPatchBubble(b.id, { x, y, pinned: true })}
             />
           ))}
 
@@ -194,6 +262,17 @@ function PanelView({
               {panel.camera}
             </span>
             <span className="flex gap-1">
+              {hasPinned && (
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="size-7"
+                  onClick={onResetBubbles}
+                  title="Reset bubble layout"
+                >
+                  <RotateCcw className="size-3.5" />
+                </Button>
+              )}
               <Button
                 size="icon"
                 variant="secondary"
@@ -222,6 +301,7 @@ function PanelView({
   );
 }
 
+
 function pageGridClass(layout: LayoutId, count: number) {
   if (layout === "splash" || count === 1) return "grid-cols-1";
   if (layout === "manga-6" || layout === "storyboard") return "grid-cols-2 sm:grid-cols-3";
@@ -233,7 +313,9 @@ export function ComicStage({
   style,
   layout,
   panels,
-  onEditBubble,
+  onPatchBubble,
+  onResetBubbles,
+
   onRegenerate,
   onStartOver,
   scripting = false,
@@ -366,7 +448,9 @@ export function ComicStage({
                 <PanelView
                   key={panel.id}
                   panel={panel}
-                  onEditBubble={(bubbleId, text) => onEditBubble(panel.id, bubbleId, text)}
+                  onPatchBubble={(bubbleId, patch) => onPatchBubble(panel.id, bubbleId, patch)}
+                  onResetBubbles={() => onResetBubbles(panel.id)}
+
                   onRegenerate={() => onRegenerate(panel.id)}
                 />
               ))}

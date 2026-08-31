@@ -182,6 +182,8 @@ const imageInput = z.object({
   camera: z.string().max(120).default(""),
   styleFragment: z.string().max(400),
   characters: z.array(characterSchema).max(3).default([]),
+  /** Storage paths of reference art in the private `character-refs` bucket. */
+  refPaths: z.array(z.string().max(400)).max(6).default([]),
   seed: z.string().max(60).optional(),
 });
 
@@ -191,30 +193,55 @@ export const generatePanelImage = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => imageInput.parse(data))
   .handler(async ({ data, context }) => {
     const cast = data.characters.map((c) => `${c.name} (${c.note})`).join("; ");
+
+    // Pull the user's reference art so the model sees the actual faces/outfits,
+    // not just a text description of them.
+    const refs: Array<{ mimeType: string; data: string }> = [];
+    for (const path of data.refPaths.slice(0, 3)) {
+      if (!path.startsWith(`${context.userId}/`)) continue;
+      const { data: blob, error } = await context.supabase.storage
+        .from("character-refs")
+        .download(path);
+      if (error || !blob) continue;
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      let binary = "";
+      for (let i = 0; i < buffer.length; i++) binary += String.fromCharCode(buffer[i]!);
+      refs.push({ mimeType: blob.type || "image/jpeg", data: btoa(binary) });
+    }
+
     const text = [
       `Single comic book panel illustration.`,
       data.camera ? `Shot: ${data.camera}.` : "",
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
+      refs.length
+        ? `Reference images are attached: match the attached characters' faces, hair, build,` +
+          ` outfit and colour palette closely, but redraw them fully in the art style below —` +
+          ` never paste or photo-collage the reference.`
+        : "",
       `Art direction: ${data.styleFragment}.`,
       `Full-bleed artwork with a clean composition: keep faces and key action in the`,
       `central band and leave uncluttered negative space in the top and bottom corners`,
       `for lettering. Absolutely no text, no lettering, no speech balloons, no captions,`,
       `no watermarks or panel borders.`,
-
-
       data.seed ? `Style seed: ${data.seed}.` : "",
     ]
       .filter(Boolean)
       .join(" ");
 
     const json = await callGemini(IMAGE_MODEL, {
-      contents: [{ role: "user", parts: [{ text }] }],
+      contents: [
+        {
+          role: "user",
+          parts: [{ text }, ...refs.map((r) => ({ inlineData: r }))],
+        },
+      ],
       generationConfig: {
         responseModalities: ["IMAGE"],
         imageConfig: { aspectRatio: "4:3" },
       },
     });
+
 
     const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
     if (!part?.inlineData) throw new Error("The image model returned no artwork. Try again.");

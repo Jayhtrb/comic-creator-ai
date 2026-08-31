@@ -10,7 +10,9 @@ const bubbleSchema = z.object({
   x: z.number(),
   y: z.number(),
   kind: z.enum(["speech", "thought", "caption"]),
+  pinned: z.boolean().optional(),
 });
+
 
 const panelSchema = z.object({
   page: z.number().int().min(1),

@@ -178,8 +178,14 @@ export interface CharacterRef {
   id: string;
   name: string;
   note: string;
+  /** Displayable image URLs (signed for saved characters). */
   images: string[];
+  /** Storage paths in the private `character-refs` bucket, for saved characters. */
+  refPaths?: string[];
+  /** True when this character lives in the user's Supabase library. */
+  saved?: boolean;
 }
+
 
 export const DEMO_CHARACTERS: CharacterRef[] = [
   {
@@ -200,11 +206,14 @@ export interface Bubble {
   id: string;
   speaker: string;
   text: string;
-  /** Percentage position within the panel. */
+  /** Percentage position within the panel (centre point when `pinned`). */
   x: number;
   y: number;
   kind: "speech" | "thought" | "caption";
+  /** True once the reader has dragged this bubble — manual position wins. */
+  pinned?: boolean | undefined;
 }
+
 
 export type PanelStatus = "queued" | "drawing" | "ready" | "failed";
 

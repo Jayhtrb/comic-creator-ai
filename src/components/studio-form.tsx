@@ -1,13 +1,18 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Camera,
+  Check,
   Dice5,
   Heart,
   LayoutGrid,
+  Loader2,
   Palette,
   Pencil,
   Plus,
   Settings2,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -27,6 +32,7 @@ import {
   type CharacterRef,
   type LayoutId,
 } from "@/lib/comic";
+import { deleteCharacter, listCharacters, saveCharacter } from "@/lib/characters.functions";
 import { cn } from "@/lib/utils";
 
 export interface GenerationConfig {
@@ -37,7 +43,18 @@ export interface GenerationConfig {
   characterIds: string[];
   /** Name + physical description of each selected cast member, for consistency. */
   characters: { name: string; note: string }[];
+  /** Storage paths of the selected cast's saved reference art. */
+  refPaths: string[];
   seed: string;
+}
+
+function readAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read that image."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function SectionHeading({
@@ -85,9 +102,60 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   const [pages, setPages] = useState(4);
   const [seed, setSeed] = useState("");
   const [advanced, setAdvanced] = useState(false);
-  const [characters, setCharacters] = useState<CharacterRef[]>(DEMO_CHARACTERS);
   const [selected, setSelected] = useState<string[]>(["kestrel"]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: "", note: "" });
+  const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const queryClient = useQueryClient();
+  const fetchCharacters = useServerFn(listCharacters);
+  const persistCharacter = useServerFn(saveCharacter);
+  const removeCharacter = useServerFn(deleteCharacter);
+
+  const saved = useQuery({
+    queryKey: ["characters"],
+    queryFn: () => fetchCharacters(),
+  });
+
+  const savedCharacters: CharacterRef[] = (saved.data ?? []).map((c) => ({
+    ...c,
+    saved: true,
+  }));
+  const characters: CharacterRef[] = [...savedCharacters, ...DEMO_CHARACTERS];
+
+  const saveMutation = useMutation({
+    mutationFn: (input: {
+      id?: string;
+      name: string;
+      note: string;
+      images?: string[];
+      keepPaths?: string[];
+    }) =>
+      persistCharacter({
+        data: {
+          ...(input.id ? { id: input.id } : {}),
+          name: input.name,
+          note: input.note,
+          images: input.images ?? [],
+          keepPaths: input.keepPaths ?? [],
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["characters"] }),
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save that character."),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => removeCharacter({ data: { id } }),
+    onSuccess: (_r, id) => {
+      setSelected((prev) => prev.filter((c) => c !== id));
+      queryClient.invalidateQueries({ queryKey: ["characters"] });
+      toast.success("Character removed from your library");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not delete that character."),
+  });
 
   const activeStyle = ART_STYLES.find((s) => s.id === style)!;
 
@@ -97,17 +165,49 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
     );
   }
 
-  function handleUpload(files: FileList | null) {
+  async function handleUpload(files: FileList | null) {
     if (!files?.length) return;
     const file = files[0]!;
-    const url = URL.createObjectURL(file);
-    const id = `local-${Date.now()}`;
-    setCharacters((prev) => [
-      ...prev,
-      { id, name: file.name.replace(/\.[^.]+$/, ""), note: "Uploaded reference", images: [url] },
-    ]);
-    setSelected((prev) => (prev.length >= 3 ? prev : [...prev, id]));
-    toast.success("Reference added to your Character Library");
+    if (file.size > 5_000_000) {
+      toast.error("Reference images need to be under 5 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      const name = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "New character";
+      const { id } = await saveMutation.mutateAsync({
+        name,
+        note: "Uploaded reference",
+        images: [dataUrl],
+      });
+      setSelected((prev) => (prev.length >= 3 ? prev : [...prev, id]));
+      setEditing(id);
+      setDraft({ name, note: "Uploaded reference" });
+      toast.success("Saved to your Character Library");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  function startEdit(char: CharacterRef) {
+    setEditing(char.id);
+    setDraft({ name: char.name, note: char.note });
+  }
+
+  async function commitEdit(char: CharacterRef) {
+    setEditing(null);
+    if (draft.name === char.name && draft.note === char.note) return;
+    await saveMutation.mutateAsync({
+      id: char.id,
+      name: draft.name.trim() || char.name,
+      note: draft.note.trim(),
+      keepPaths: char.refPaths ?? [],
+    });
+    toast.success("Character updated");
   }
 
   function surpriseMe() {
@@ -123,18 +223,19 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
       toast.error("Give the story a little more to work with (12+ characters).");
       return;
     }
+    const cast = characters.filter((c) => selected.includes(c.id));
     onGenerate({
       story,
       style,
       layout,
       pages,
       characterIds: selected,
-      characters: characters
-        .filter((c) => selected.includes(c.id))
-        .map((c) => ({ name: c.name, note: c.note })),
+      characters: cast.map((c) => ({ name: c.name, note: c.note })),
+      refPaths: cast.flatMap((c) => c.refPaths ?? []),
       seed,
     });
   }
+
 
   return (
     <div className="grid gap-6">
@@ -171,47 +272,111 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {characters.map((char) => {
             const isOn = selected.includes(char.id);
+            const isEditing = editing === char.id;
             return (
-              <button
+              <div
                 key={char.id}
-                type="button"
-                onClick={() => toggleCharacter(char.id)}
                 className={cn(
-                  "group overflow-hidden rounded-xl border-2 bg-card text-left transition-all",
+                  "group relative overflow-hidden rounded-xl border-2 bg-card text-left transition-all",
                   isOn
                     ? "border-primary shadow-[var(--shadow-card)]"
                     : "border-border hover:border-input",
                 )}
-                aria-pressed={isOn}
               >
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  <img
-                    src={char.images[0]}
-                    alt={char.name}
-                    loading="lazy"
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  {isOn && (
-                    <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Heart className="size-3.5 fill-current" />
-                    </span>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="truncate text-sm font-medium">{char.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{char.note}</p>
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => toggleCharacter(char.id)}
+                  aria-pressed={isOn}
+                  className="block w-full"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    <img
+                      src={char.images[0]}
+                      alt={char.name}
+                      loading="lazy"
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    {isOn && (
+                      <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Heart className="size-3.5 fill-current" />
+                      </span>
+                    )}
+                    {char.saved && (
+                      <span className="absolute left-2 top-2 rounded-full bg-ink/80 px-2 py-0.5 text-[10px] font-medium text-paper">
+                        Saved
+                      </span>
+                    )}
+                  </div>
+                </button>
+
+                {isEditing ? (
+                  <div className="space-y-2 p-3">
+                    <Input
+                      autoFocus
+                      value={draft.name}
+                      onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                      placeholder="Name"
+                      className="h-8 text-sm"
+                    />
+                    <Textarea
+                      value={draft.note}
+                      rows={2}
+                      onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
+                      placeholder="Hair, build, outfit, colours…"
+                      className="resize-none text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-7 w-full gap-1 text-xs"
+                      onClick={() => void commitEdit(char)}
+                    >
+                      <Check className="size-3" /> Save
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-3">
+                    <p className="truncate text-sm font-medium">{char.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{char.note}</p>
+                  </div>
+                )}
+
+                {char.saved && !isEditing && (
+                  <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="size-7"
+                      title="Edit description"
+                      onClick={() => startEdit(char)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="size-7"
+                      title="Delete character"
+                      onClick={() => deleteMutation.mutate(char.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             );
           })}
 
           <button
             type="button"
+            disabled={uploading}
             onClick={() => fileInput.current?.click()}
-            className="flex aspect-square min-h-[168px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            className="flex aspect-square min-h-[168px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
           >
-            <Plus className="size-5" />
-            <span className="text-sm font-medium">Upload reference</span>
+            {uploading ? <Loader2 className="size-5 animate-spin" /> : <Plus className="size-5" />}
+            <span className="text-sm font-medium">
+              {uploading ? "Saving…" : "Upload reference"}
+            </span>
+
           </button>
           <input
             ref={fileInput}
