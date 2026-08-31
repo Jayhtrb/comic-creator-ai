@@ -120,6 +120,8 @@ function Studio() {
             camera: panel.camera,
             styleFragment: style.promptFragment,
             characters: next.characters,
+            refPaths: next.refPaths,
+
             ...(next.seed ? { seed: next.seed } : {}),
           },
         });
