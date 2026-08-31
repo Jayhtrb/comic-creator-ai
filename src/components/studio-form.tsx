@@ -272,47 +272,111 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {characters.map((char) => {
             const isOn = selected.includes(char.id);
+            const isEditing = editing === char.id;
             return (
-              <button
+              <div
                 key={char.id}
-                type="button"
-                onClick={() => toggleCharacter(char.id)}
                 className={cn(
-                  "group overflow-hidden rounded-xl border-2 bg-card text-left transition-all",
+                  "group relative overflow-hidden rounded-xl border-2 bg-card text-left transition-all",
                   isOn
                     ? "border-primary shadow-[var(--shadow-card)]"
                     : "border-border hover:border-input",
                 )}
-                aria-pressed={isOn}
               >
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  <img
-                    src={char.images[0]}
-                    alt={char.name}
-                    loading="lazy"
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  {isOn && (
-                    <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Heart className="size-3.5 fill-current" />
-                    </span>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="truncate text-sm font-medium">{char.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{char.note}</p>
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => toggleCharacter(char.id)}
+                  aria-pressed={isOn}
+                  className="block w-full"
+                >
+                  <div className="relative aspect-square overflow-hidden bg-muted">
+                    <img
+                      src={char.images[0]}
+                      alt={char.name}
+                      loading="lazy"
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    {isOn && (
+                      <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Heart className="size-3.5 fill-current" />
+                      </span>
+                    )}
+                    {char.saved && (
+                      <span className="absolute left-2 top-2 rounded-full bg-ink/80 px-2 py-0.5 text-[10px] font-medium text-paper">
+                        Saved
+                      </span>
+                    )}
+                  </div>
+                </button>
+
+                {isEditing ? (
+                  <div className="space-y-2 p-3">
+                    <Input
+                      autoFocus
+                      value={draft.name}
+                      onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                      placeholder="Name"
+                      className="h-8 text-sm"
+                    />
+                    <Textarea
+                      value={draft.note}
+                      rows={2}
+                      onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
+                      placeholder="Hair, build, outfit, colours…"
+                      className="resize-none text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-7 w-full gap-1 text-xs"
+                      onClick={() => void commitEdit(char)}
+                    >
+                      <Check className="size-3" /> Save
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-3">
+                    <p className="truncate text-sm font-medium">{char.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{char.note}</p>
+                  </div>
+                )}
+
+                {char.saved && !isEditing && (
+                  <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="size-7"
+                      title="Edit description"
+                      onClick={() => startEdit(char)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="size-7"
+                      title="Delete character"
+                      onClick={() => deleteMutation.mutate(char.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             );
           })}
 
           <button
             type="button"
+            disabled={uploading}
             onClick={() => fileInput.current?.click()}
-            className="flex aspect-square min-h-[168px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            className="flex aspect-square min-h-[168px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
           >
-            <Plus className="size-5" />
-            <span className="text-sm font-medium">Upload reference</span>
+            {uploading ? <Loader2 className="size-5 animate-spin" /> : <Plus className="size-5" />}
+            <span className="text-sm font-medium">
+              {uploading ? "Saving…" : "Upload reference"}
+            </span>
+
           </button>
           <input
             ref={fileInput}
