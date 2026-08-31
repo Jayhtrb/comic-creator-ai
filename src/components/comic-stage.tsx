@@ -23,6 +23,8 @@ interface ComicStageProps {
   onEditBubble: (panelId: string, bubbleId: string, text: string) => void;
   onRegenerate: (panelId: string) => void;
   onStartOver: () => void;
+  /** True while pass 1 (the script) is still being written and no panels exist yet. */
+  scripting?: boolean;
 }
 
 function bubbleShape(kind: Bubble["kind"]) {
@@ -190,6 +192,7 @@ export function ComicStage({
   onEditBubble,
   onRegenerate,
   onStartOver,
+  scripting = false,
 }: ComicStageProps) {
   const [mode, setMode] = useState<"scroll" | "page">("scroll");
   const [current, setCurrent] = useState(1);
@@ -197,7 +200,7 @@ export function ComicStage({
   const styleName = ART_STYLES.find((s) => s.id === style)?.name ?? style;
   const pages = [...new Set(panels.map((p) => p.page))].sort((a, b) => a - b);
   const ready = panels.filter((p) => p.status === "ready").length;
-  const done = ready === panels.length;
+  const done = panels.length > 0 && ready === panels.length;
   const visiblePages = mode === "page" ? pages.filter((p) => p === current) : pages;
 
   function share() {
@@ -219,8 +222,9 @@ export function ComicStage({
         <div>
           <h2 className="text-xl font-bold">{title}</h2>
           <p className="text-sm text-muted-foreground">
-            {styleName} · {pages.length} page{pages.length > 1 ? "s" : ""} · {ready}/{panels.length}{" "}
-            panels drawn
+            {panels.length === 0
+              ? `${styleName} · breaking your story into panels…`
+              : `${styleName} · ${pages.length} page${pages.length > 1 ? "s" : ""} · ${ready}/${panels.length} panels drawn`}
           </p>
         </div>
 
@@ -265,7 +269,23 @@ export function ComicStage({
         </div>
       </div>
 
-      {!done && (
+      {panels.length === 0 && (scripting || !done) && (
+        <div
+          data-print-hide
+          className="rounded-xl border border-border bg-card p-8 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="mx-auto mb-3 block size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="font-medium">Writing your script…</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The AI is breaking your story into panels, shots and dialogue. This usually takes
+            20–40 seconds — panel art starts appearing right after.
+          </p>
+        </div>
+      )}
+
+      {panels.length > 0 && !done && (
         <div data-print-hide className="rounded-xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-medium">Inking your panels…</span>

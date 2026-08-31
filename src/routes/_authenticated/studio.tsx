@@ -54,6 +54,7 @@ function Studio() {
   const [config, setConfig] = useState<GenerationConfig | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [saving, setSaving] = useState(false);
+  const [scripting, setScripting] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [title, setTitle] = useState("Untitled comic");
   const persist = useServerFn(saveComic);
@@ -73,6 +74,7 @@ function Studio() {
     setSavedId(null);
     setTitle("Untitled comic");
     setPhase("comic");
+    setScripting(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     let script;
@@ -92,6 +94,8 @@ function Studio() {
       toast.error(error instanceof Error ? error.message : "Could not write the script.");
       setPhase("studio");
       return;
+    } finally {
+      setScripting(false);
     }
 
     const plan: Panel[] = script.panels.map((p) => ({
@@ -108,7 +112,7 @@ function Studio() {
     setPanels(plan);
     toast.success("Script ready — inking panels…");
 
-    await pooled(plan, 2, async (panel) => {
+    await pooled(plan, 4, async (panel) => {
       try {
         const { image, path } = await drawPanel({
           data: {
@@ -241,6 +245,7 @@ function Studio() {
                 style={config.style}
                 layout={config.layout}
                 panels={panels}
+                scripting={scripting}
                 onEditBubble={editBubble}
                 onRegenerate={regenerate}
                 onStartOver={startOver}
