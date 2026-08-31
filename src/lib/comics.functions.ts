@@ -17,6 +17,8 @@ const panelSchema = z.object({
   index: z.number().int().min(0),
   camera: z.string().optional(),
   prompt: z.string().optional(),
+  /** Rendered panel art as a data URL; uploaded to the private panels bucket. */
+  image: z.string().optional(),
   bubbles: z.array(bubbleSchema),
 });
 
@@ -29,7 +31,17 @@ const saveSchema = z.object({
   panels: z.array(panelSchema).min(1),
 });
 
-/** Persists a finished comic (metadata + panel script) for the signed-in user. */
+/** Decodes a `data:image/...;base64,...` URL into bytes for storage upload. */
+function decodeDataUrl(dataUrl: string): { bytes: Uint8Array; contentType: string } | null {
+  const match = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUrl);
+  if (!match) return null;
+  const binary = atob(match[2]!);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return { bytes, contentType: match[1]! };
+}
+
+/** Persists a finished comic (metadata, panel art and script) for the signed-in user. */
 export const saveComic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => saveSchema.parse(data))
@@ -49,17 +61,33 @@ export const saveComic = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+    const comicId = comic.id as string;
 
-    const rows = data.panels.map((p) => ({
-      comic_id: comic.id as string,
-      user_id: context.userId,
-      page_number: p.page,
-      panel_index: p.index,
-      camera: p.camera ?? null,
-      image_prompt: p.prompt ?? null,
-      bubbles: p.bubbles,
-      status: "ready",
-    }));
+    const rows = [];
+    for (const p of data.panels) {
+      let imagePath: string | null = null;
+      const decoded = p.image ? decodeDataUrl(p.image) : null;
+      if (decoded) {
+        const ext = decoded.contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
+        const path = `${context.userId}/${comicId}/p${p.page}-${p.index}.${ext}`;
+        const { error: uploadError } = await context.supabase.storage
+          .from("comic-panels")
+          .upload(path, decoded.bytes, { contentType: decoded.contentType, upsert: true });
+        if (!uploadError) imagePath = path;
+      }
+
+      rows.push({
+        comic_id: comicId,
+        user_id: context.userId,
+        page_number: p.page,
+        panel_index: p.index,
+        camera: p.camera ?? null,
+        image_prompt: p.prompt ?? null,
+        image_path: imagePath,
+        bubbles: p.bubbles,
+        status: "ready",
+      });
+    }
 
     const { error: panelError } = await context.supabase.from("panels").insert(rows);
     if (panelError) throw new Error(panelError.message);
@@ -68,10 +96,10 @@ export const saveComic = createServerFn({ method: "POST" })
       user_id: context.userId,
       prompt: data.story,
       style: data.style,
-      comic_id: comic.id,
+      comic_id: comicId,
     });
 
-    return { id: comic.id as string };
+    return { id: comicId };
   });
 
 /** Lists the signed-in user's saved comics, newest first. */
