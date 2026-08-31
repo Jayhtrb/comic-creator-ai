@@ -131,13 +131,24 @@ export const getComic = createServerFn({ method: "GET" })
 
     const { data: panels, error: panelError } = await context.supabase
       .from("panels")
-      .select("page_number, panel_index, camera, image_prompt, bubbles")
+      .select("page_number, panel_index, camera, image_prompt, image_path, bubbles")
       .eq("comic_id", data.id)
       .order("page_number", { ascending: true })
       .order("panel_index", { ascending: true });
     if (panelError) throw new Error(panelError.message);
 
-    return { comic, panels: panels ?? [] };
+    // Panel art lives in a private bucket — hand back short-lived signed URLs.
+    const withArt = await Promise.all(
+      (panels ?? []).map(async (p) => {
+        if (!p.image_path) return { ...p, image_url: null as string | null };
+        const { data: signed } = await context.supabase.storage
+          .from("comic-panels")
+          .createSignedUrl(p.image_path as string, 60 * 60);
+        return { ...p, image_url: signed?.signedUrl ?? null };
+      }),
+    );
+
+    return { comic, panels: withArt };
   });
 
 /** Deletes a saved comic (panels cascade). */
