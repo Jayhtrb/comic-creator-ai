@@ -269,7 +269,23 @@ export function ComicStage({
         </div>
       </div>
 
-      {!done && (
+      {panels.length === 0 && (scripting || !done) && (
+        <div
+          data-print-hide
+          className="rounded-xl border border-border bg-card p-8 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="mx-auto mb-3 block size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="font-medium">Writing your script…</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The AI is breaking your story into panels, shots and dialogue. This usually takes
+            20–40 seconds — panel art starts appearing right after.
+          </p>
+        </div>
+      )}
+
+      {panels.length > 0 && !done && (
         <div data-print-hide className="rounded-xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-medium">Inking your panels…</span>
