@@ -10,11 +10,18 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  *   SB_SERVICE_ROLE_KEY  — service-role/secret key (secret store)
  */
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set — Supabase server env is not configured`);
-  return value;
+function requireEnv(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  throw new Error(`${names[0]} is not set — Supabase server env is not configured`);
 }
+
+const envUrl = () => requireEnv("SB_URL", "SUPABASE_URL", "VITE_SUPABASE_URL");
+const envPublishableKey = () =>
+  requireEnv("SB_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY");
+const envServiceRoleKey = () => requireEnv("SB_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY");
 
 const statelessAuth = {
   persistSession: false,
