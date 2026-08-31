@@ -171,6 +171,8 @@ function Studio() {
           camera: panel.camera,
           styleFragment: style.promptFragment,
           characters: config.characters,
+          refPaths: config.refPaths,
+
           seed: Math.random().toString(36).slice(2, 10),
         },
       });
