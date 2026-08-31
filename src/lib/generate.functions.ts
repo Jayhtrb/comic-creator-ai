@@ -211,5 +211,24 @@ export const generatePanelImage = createServerFn({ method: "POST" })
     const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
     if (!part?.inlineData) throw new Error("The image model returned no artwork. Try again.");
 
-    return { image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` };
+    // Park the artwork in the user's private bucket and hand the browser a signed
+    // URL — passing megabytes of base64 back through RPC (and again on save) is
+    // what makes multi-page runs fall over.
+    const binary = atob(part.inlineData.data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const contentType = part.inlineData.mimeType || "image/jpeg";
+    const ext = contentType.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
+    const path = `${context.userId}/drafts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const { error: uploadError } = await context.supabase.storage
+      .from("comic-panels")
+      .upload(path, bytes, { contentType, upsert: true });
+    if (uploadError) throw new Error(`Could not store the panel art: ${uploadError.message}`);
+
+    const { data: signed } = await context.supabase.storage
+      .from("comic-panels")
+      .createSignedUrl(path, 60 * 60 * 6);
+
+    return { path, image: signed?.signedUrl ?? "" };
   });
