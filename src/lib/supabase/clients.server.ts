@@ -36,7 +36,7 @@ const statelessAuth = {
  * whether a caller is an admin.
  */
 export function getSupabaseAdmin(): SupabaseClient {
-  return createClient(requireEnv("SB_URL"), requireEnv("SB_SERVICE_ROLE_KEY"), {
+  return createClient(envUrl(), envServiceRoleKey(), {
     auth: statelessAuth,
   });
 }
