@@ -222,8 +222,9 @@ export function ComicStage({
         <div>
           <h2 className="text-xl font-bold">{title}</h2>
           <p className="text-sm text-muted-foreground">
-            {styleName} · {pages.length} page{pages.length > 1 ? "s" : ""} · {ready}/{panels.length}{" "}
-            panels drawn
+            {panels.length === 0
+              ? `${styleName} · breaking your story into panels…`
+              : `${styleName} · ${pages.length} page${pages.length > 1 ? "s" : ""} · ${ready}/${panels.length} panels drawn`}
           </p>
         </div>
 
