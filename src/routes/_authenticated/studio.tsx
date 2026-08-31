@@ -223,13 +223,21 @@ function Studio() {
           config && (
             <>
               <div data-print-hide className="mb-4 flex justify-end">
-                <Button onClick={handleSave} disabled={saving || savedId !== null}>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    saving ||
+                    savedId !== null ||
+                    panels.length === 0 ||
+                    panels.some((p) => p.status === "drawing")
+                  }
+                >
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                   {savedId ? "Saved" : "Save to library"}
                 </Button>
               </div>
               <ComicStage
-                title={config.story.slice(0, 60) + (config.story.length > 60 ? "…" : "")}
+                title={title}
                 style={config.style}
                 layout={config.layout}
                 panels={panels}
