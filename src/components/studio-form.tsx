@@ -1,13 +1,18 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Camera,
+  Check,
   Dice5,
   Heart,
   LayoutGrid,
+  Loader2,
   Palette,
   Pencil,
   Plus,
   Settings2,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -27,6 +32,7 @@ import {
   type CharacterRef,
   type LayoutId,
 } from "@/lib/comic";
+import { deleteCharacter, listCharacters, saveCharacter } from "@/lib/characters.functions";
 import { cn } from "@/lib/utils";
 
 export interface GenerationConfig {
@@ -37,7 +43,18 @@ export interface GenerationConfig {
   characterIds: string[];
   /** Name + physical description of each selected cast member, for consistency. */
   characters: { name: string; note: string }[];
+  /** Storage paths of the selected cast's saved reference art. */
+  refPaths: string[];
   seed: string;
+}
+
+function readAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read that image."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function SectionHeading({
@@ -85,9 +102,60 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   const [pages, setPages] = useState(4);
   const [seed, setSeed] = useState("");
   const [advanced, setAdvanced] = useState(false);
-  const [characters, setCharacters] = useState<CharacterRef[]>(DEMO_CHARACTERS);
   const [selected, setSelected] = useState<string[]>(["kestrel"]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: "", note: "" });
+  const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const queryClient = useQueryClient();
+  const fetchCharacters = useServerFn(listCharacters);
+  const persistCharacter = useServerFn(saveCharacter);
+  const removeCharacter = useServerFn(deleteCharacter);
+
+  const saved = useQuery({
+    queryKey: ["characters"],
+    queryFn: () => fetchCharacters(),
+  });
+
+  const savedCharacters: CharacterRef[] = (saved.data ?? []).map((c) => ({
+    ...c,
+    saved: true,
+  }));
+  const characters: CharacterRef[] = [...savedCharacters, ...DEMO_CHARACTERS];
+
+  const saveMutation = useMutation({
+    mutationFn: (input: {
+      id?: string;
+      name: string;
+      note: string;
+      images?: string[];
+      keepPaths?: string[];
+    }) =>
+      persistCharacter({
+        data: {
+          ...(input.id ? { id: input.id } : {}),
+          name: input.name,
+          note: input.note,
+          images: input.images ?? [],
+          keepPaths: input.keepPaths ?? [],
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["characters"] }),
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save that character."),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => removeCharacter({ data: { id } }),
+    onSuccess: (_r, id) => {
+      setSelected((prev) => prev.filter((c) => c !== id));
+      queryClient.invalidateQueries({ queryKey: ["characters"] });
+      toast.success("Character removed from your library");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not delete that character."),
+  });
 
   const activeStyle = ART_STYLES.find((s) => s.id === style)!;
 
@@ -97,17 +165,49 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
     );
   }
 
-  function handleUpload(files: FileList | null) {
+  async function handleUpload(files: FileList | null) {
     if (!files?.length) return;
     const file = files[0]!;
-    const url = URL.createObjectURL(file);
-    const id = `local-${Date.now()}`;
-    setCharacters((prev) => [
-      ...prev,
-      { id, name: file.name.replace(/\.[^.]+$/, ""), note: "Uploaded reference", images: [url] },
-    ]);
-    setSelected((prev) => (prev.length >= 3 ? prev : [...prev, id]));
-    toast.success("Reference added to your Character Library");
+    if (file.size > 5_000_000) {
+      toast.error("Reference images need to be under 5 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      const name = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "New character";
+      const { id } = await saveMutation.mutateAsync({
+        name,
+        note: "Uploaded reference",
+        images: [dataUrl],
+      });
+      setSelected((prev) => (prev.length >= 3 ? prev : [...prev, id]));
+      setEditing(id);
+      setDraft({ name, note: "Uploaded reference" });
+      toast.success("Saved to your Character Library");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  function startEdit(char: CharacterRef) {
+    setEditing(char.id);
+    setDraft({ name: char.name, note: char.note });
+  }
+
+  async function commitEdit(char: CharacterRef) {
+    setEditing(null);
+    if (draft.name === char.name && draft.note === char.note) return;
+    await saveMutation.mutateAsync({
+      id: char.id,
+      name: draft.name.trim() || char.name,
+      note: draft.note.trim(),
+      keepPaths: char.refPaths ?? [],
+    });
+    toast.success("Character updated");
   }
 
   function surpriseMe() {
@@ -123,18 +223,19 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
       toast.error("Give the story a little more to work with (12+ characters).");
       return;
     }
+    const cast = characters.filter((c) => selected.includes(c.id));
     onGenerate({
       story,
       style,
       layout,
       pages,
       characterIds: selected,
-      characters: characters
-        .filter((c) => selected.includes(c.id))
-        .map((c) => ({ name: c.name, note: c.note })),
+      characters: cast.map((c) => ({ name: c.name, note: c.note })),
+      refPaths: cast.flatMap((c) => c.refPaths ?? []),
       seed,
     });
   }
+
 
   return (
     <div className="grid gap-6">
