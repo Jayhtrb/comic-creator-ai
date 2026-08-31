@@ -46,7 +46,7 @@ export function getSupabaseAdmin(): SupabaseClient {
  * This is the default for server functions that read or write user data.
  */
 export function createUserClient(accessToken: string): SupabaseClient {
-  return createClient(requireEnv("SB_URL"), requireEnv("SB_PUBLISHABLE_KEY"), {
+  return createClient(envUrl(), envPublishableKey(), {
     auth: statelessAuth,
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
