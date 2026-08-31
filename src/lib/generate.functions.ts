@@ -197,8 +197,10 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
       `Art direction: ${data.styleFragment}.`,
-      `Full-bleed artwork with a clean composition. Absolutely no text, no lettering,`,
-      `no speech balloons, no captions, no watermarks or panel borders.`,
+      `Full-bleed artwork with a clean composition: keep faces and key action in the`,
+      `central band and leave uncluttered negative space in the top and bottom corners`,
+      `for lettering. Absolutely no text, no lettering,`,
+
       data.seed ? `Style seed: ${data.seed}.` : "",
     ]
       .filter(Boolean)
