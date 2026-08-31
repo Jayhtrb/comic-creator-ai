@@ -37,11 +37,51 @@ function bubbleShape(kind: Bubble["kind"]) {
   return "rounded-2xl bg-paper text-paper-foreground font-comic text-[13px] font-bold";
 }
 
+/**
+ * Bubbles are snapped into safe edge slots instead of the model's raw x/y, so
+ * they never land on top of faces or the middle of the artwork.
+ * Captions hug the top-left, dialogue alternates across the top corners and
+ * spills to the bottom corners only when a panel is chatty.
+ */
+const BUBBLE_SLOTS: Array<React.CSSProperties> = [
+  { top: "4%", left: "4%" },
+  { top: "4%", right: "4%" },
+  { bottom: "6%", left: "4%" },
+  { bottom: "6%", right: "4%" },
+];
+
+function bubbleSlots(bubbles: Bubble[]): Array<{ bubble: Bubble; slot: React.CSSProperties }> {
+  const captions = bubbles.filter((b) => b.kind === "caption");
+  const rest = bubbles.filter((b) => b.kind !== "caption");
+  let cursor = 0;
+  const out: Array<{ bubble: Bubble; slot: React.CSSProperties }> = [];
+
+  // Captions read first, pinned to the top-left corner.
+  captions.forEach((bubble) => {
+    out.push({ bubble, slot: BUBBLE_SLOTS[cursor % BUBBLE_SLOTS.length]! });
+    cursor++;
+  });
+  // Dialogue keeps the original left/right intent from the script when possible.
+  rest.forEach((bubble) => {
+    const prefersRight = bubble.x >= 50;
+    const candidates = BUBBLE_SLOTS.map((s, i) => ({ s, i })).filter(
+      ({ s, i }) => i >= cursor && (prefersRight ? "right" in s : "left" in s),
+    );
+    const pick = candidates[0]?.i ?? cursor;
+    out.push({ bubble, slot: BUBBLE_SLOTS[pick % BUBBLE_SLOTS.length]! });
+    cursor = pick + 1;
+  });
+
+  return out;
+}
+
 function SpeechBubble({
   bubble,
+  slot,
   onChange,
 }: {
   bubble: Bubble;
+  slot: React.CSSProperties;
   onChange: (text: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -58,10 +98,8 @@ function SpeechBubble({
   }
 
   return (
-    <div
-      className="absolute z-10 max-w-[46%]"
-      style={{ left: `${bubble.x}%`, top: `${bubble.y}%` }}
-    >
+    <div className="absolute z-10 max-w-[38%]" style={slot}>
+
       {editing ? (
         <div className="flex items-start gap-1">
           <textarea
@@ -139,9 +177,15 @@ function PanelView({
             loading="lazy"
             className="size-full rounded-md border-2 border-ink object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
-          {panel.bubbles.map((b) => (
-            <SpeechBubble key={b.id} bubble={b} onChange={(text) => onEditBubble(b.id, text)} />
+          {bubbleSlots(panel.bubbles).map(({ bubble: b, slot }) => (
+            <SpeechBubble
+              key={b.id}
+              bubble={b}
+              slot={slot}
+              onChange={(text) => onEditBubble(b.id, text)}
+            />
           ))}
+
           <figcaption
             data-print-hide
             className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-ink/85 px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100"

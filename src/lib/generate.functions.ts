@@ -102,9 +102,13 @@ export const generateScript = createServerFn({ method: "POST" })
                 `- prompt: a single vivid sentence describing ONLY what is visible, restating each`,
                 `  present character's full physical description verbatim so the art stays on-model.`,
                 `  Never mention text, lettering, speech balloons or captions in the prompt.`,
-                `- bubbles: 0-3 balloons. x/y are percentage positions inside the panel (5-75).`,
-                `  Keep dialogue under 90 characters. Use kind "caption" for narration.`,
+                `  Compose so faces and key action sit in the middle band of the frame, leaving`,
+                `  calm negative space (sky, wall, floor) in the top and bottom corners.`,
+                `- bubbles: 0-2 balloons only, under 70 characters each so they fit in a corner.`,
+                `  x/y are hints: x below 40 for a left-side speaker, above 60 for a right-side`,
+                `  speaker; the app snaps balloons to safe corners. Use "caption" for narration.`,
                 `Number pages from 1 and panel index from 0 within each page.`,
+
               ]
                 .filter(Boolean)
                 .join("\n"),
@@ -193,8 +197,12 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
       `Art direction: ${data.styleFragment}.`,
-      `Full-bleed artwork with a clean composition. Absolutely no text, no lettering,`,
-      `no speech balloons, no captions, no watermarks or panel borders.`,
+      `Full-bleed artwork with a clean composition: keep faces and key action in the`,
+      `central band and leave uncluttered negative space in the top and bottom corners`,
+      `for lettering. Absolutely no text, no lettering, no speech balloons, no captions,`,
+      `no watermarks or panel borders.`,
+
+
       data.seed ? `Style seed: ${data.seed}.` : "",
     ]
       .filter(Boolean)
