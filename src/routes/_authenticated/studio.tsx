@@ -130,15 +130,30 @@ function Studio() {
     });
   }
 
-  function editBubble(panelId: string, bubbleId: string, text: string) {
+  function patchBubble(panelId: string, bubbleId: string, patch: Partial<Panel["bubbles"][number]>) {
     setPanels((prev) =>
       prev.map((p) =>
         p.id === panelId
-          ? { ...p, bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, text } : b)) }
+          ? {
+              ...p,
+              bubbles: p.bubbles.map((b) => (b.id === bubbleId ? { ...b, ...patch } : b)),
+            }
           : p,
       ),
     );
   }
+
+  /** Drops manual placements so the auto safe-corner layout takes over again. */
+  function resetBubbles(panelId: string) {
+    setPanels((prev) =>
+      prev.map((p) =>
+        p.id === panelId
+          ? { ...p, bubbles: p.bubbles.map((b) => ({ ...b, pinned: false })) }
+          : p,
+      ),
+    );
+  }
+
 
   async function regenerate(panelId: string) {
     const panel = panels.find((p) => p.id === panelId);
