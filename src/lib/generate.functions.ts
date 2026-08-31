@@ -185,7 +185,7 @@ const imageInput = z.object({
 export const generatePanelImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => imageInput.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const cast = data.characters.map((c) => `${c.name} (${c.note})`).join("; ");
     const text = [
       `Single comic book panel illustration.`,
