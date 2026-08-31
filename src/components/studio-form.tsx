@@ -35,6 +35,8 @@ export interface GenerationConfig {
   layout: LayoutId;
   pages: number;
   characterIds: string[];
+  /** Name + physical description of each selected cast member, for consistency. */
+  characters: { name: string; note: string }[];
   seed: string;
 }
 
