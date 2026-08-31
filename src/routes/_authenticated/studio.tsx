@@ -172,7 +172,7 @@ function Studio() {
     try {
       const result = await persist({
         data: {
-          title: config.story.slice(0, 60) + (config.story.length > 60 ? "…" : ""),
+          title,
           story: config.story,
           style: config.style,
           layout: config.layout,
@@ -182,6 +182,7 @@ function Studio() {
             index: p.index,
             camera: p.camera,
             prompt: p.prompt,
+            ...(p.image ? { image: p.image } : {}),
             bubbles: p.bubbles,
           })),
         },
