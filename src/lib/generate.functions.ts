@@ -102,8 +102,10 @@ export const generateScript = createServerFn({ method: "POST" })
                 `- prompt: a single vivid sentence describing ONLY what is visible, restating each`,
                 `  present character's full physical description verbatim so the art stays on-model.`,
                 `  Never mention text, lettering, speech balloons or captions in the prompt.`,
-                `- bubbles: 0-3 balloons. x/y are percentage positions inside the panel (5-75).`,
-                `  Keep dialogue under 90 characters. Use kind "caption" for narration.`,
+        `- bubbles: 0-2 balloons only, kept short (under 70 characters) so they fit in a`,
+        `  panel corner. x/y are hints: use x below 40 for a left-side speaker and above`,
+        `  60 for a right-side speaker; the app snaps balloons to safe corners.`,
+
                 `Number pages from 1 and panel index from 0 within each page.`,
               ]
                 .filter(Boolean)
