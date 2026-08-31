@@ -261,7 +261,9 @@ function Studio() {
                 layout={config.layout}
                 panels={panels}
                 scripting={scripting}
-                onEditBubble={editBubble}
+                onPatchBubble={patchBubble}
+                onResetBubbles={resetBubbles}
+
                 onRegenerate={regenerate}
                 onStartOver={startOver}
               />
