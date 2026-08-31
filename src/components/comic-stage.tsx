@@ -313,7 +313,9 @@ export function ComicStage({
   style,
   layout,
   panels,
-  onEditBubble,
+  onPatchBubble,
+  onResetBubbles,
+
   onRegenerate,
   onStartOver,
   scripting = false,
