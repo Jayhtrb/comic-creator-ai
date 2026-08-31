@@ -177,9 +177,15 @@ function PanelView({
             loading="lazy"
             className="size-full rounded-md border-2 border-ink object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
-          {panel.bubbles.map((b) => (
-            <SpeechBubble key={b.id} bubble={b} onChange={(text) => onEditBubble(b.id, text)} />
+          {bubbleSlots(panel.bubbles).map(({ bubble: b, slot }) => (
+            <SpeechBubble
+              key={b.id}
+              bubble={b}
+              slot={slot}
+              onChange={(text) => onEditBubble(b.id, text)}
+            />
           ))}
+
           <figcaption
             data-print-hide
             className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 bg-ink/85 px-3 py-2 opacity-0 transition-opacity group-hover:opacity-100"
