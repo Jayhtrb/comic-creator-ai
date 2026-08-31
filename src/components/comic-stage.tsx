@@ -192,6 +192,7 @@ export function ComicStage({
   onEditBubble,
   onRegenerate,
   onStartOver,
+  scripting = false,
 }: ComicStageProps) {
   const [mode, setMode] = useState<"scroll" | "page">("scroll");
   const [current, setCurrent] = useState(1);
@@ -199,7 +200,7 @@ export function ComicStage({
   const styleName = ART_STYLES.find((s) => s.id === style)?.name ?? style;
   const pages = [...new Set(panels.map((p) => p.page))].sort((a, b) => a - b);
   const ready = panels.filter((p) => p.status === "ready").length;
-  const done = ready === panels.length;
+  const done = panels.length > 0 && ready === panels.length;
   const visiblePages = mode === "page" ? pages.filter((p) => p === current) : pages;
 
   function share() {
