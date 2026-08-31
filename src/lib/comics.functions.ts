@@ -17,6 +17,8 @@ const panelSchema = z.object({
   index: z.number().int().min(0),
   camera: z.string().optional(),
   prompt: z.string().optional(),
+  /** Storage path of the rendered art in the private `comic-panels` bucket. */
+  imagePath: z.string().max(400).optional(),
   bubbles: z.array(bubbleSchema),
 });
 
@@ -29,7 +31,7 @@ const saveSchema = z.object({
   panels: z.array(panelSchema).min(1),
 });
 
-/** Persists a finished comic (metadata + panel script) for the signed-in user. */
+/** Persists a finished comic (metadata, panel art paths and script). */
 export const saveComic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => saveSchema.parse(data))
@@ -49,14 +51,17 @@ export const saveComic = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+    const comicId = comic.id as string;
 
     const rows = data.panels.map((p) => ({
-      comic_id: comic.id as string,
+      comic_id: comicId,
       user_id: context.userId,
       page_number: p.page,
       panel_index: p.index,
       camera: p.camera ?? null,
       image_prompt: p.prompt ?? null,
+      // Only accept paths inside the caller's own storage folder.
+      image_path: p.imagePath?.startsWith(`${context.userId}/`) ? p.imagePath : null,
       bubbles: p.bubbles,
       status: "ready",
     }));
@@ -68,10 +73,10 @@ export const saveComic = createServerFn({ method: "POST" })
       user_id: context.userId,
       prompt: data.story,
       style: data.style,
-      comic_id: comic.id,
+      comic_id: comicId,
     });
 
-    return { id: comic.id as string };
+    return { id: comicId };
   });
 
 /** Lists the signed-in user's saved comics, newest first. */
@@ -103,13 +108,24 @@ export const getComic = createServerFn({ method: "GET" })
 
     const { data: panels, error: panelError } = await context.supabase
       .from("panels")
-      .select("page_number, panel_index, camera, image_prompt, bubbles")
+      .select("page_number, panel_index, camera, image_prompt, image_path, bubbles")
       .eq("comic_id", data.id)
       .order("page_number", { ascending: true })
       .order("panel_index", { ascending: true });
     if (panelError) throw new Error(panelError.message);
 
-    return { comic, panels: panels ?? [] };
+    // Panel art lives in a private bucket — hand back short-lived signed URLs.
+    const withArt = await Promise.all(
+      (panels ?? []).map(async (p) => {
+        if (!p.image_path) return { ...p, image_url: null as string | null };
+        const { data: signed } = await context.supabase.storage
+          .from("comic-panels")
+          .createSignedUrl(p.image_path as string, 60 * 60);
+        return { ...p, image_url: signed?.signedUrl ?? null };
+      }),
+    );
+
+    return { comic, panels: withArt };
   });
 
 /** Deletes a saved comic (panels cascade). */

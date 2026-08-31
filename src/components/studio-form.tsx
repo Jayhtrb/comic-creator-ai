@@ -35,6 +35,8 @@ export interface GenerationConfig {
   layout: LayoutId;
   pages: number;
   characterIds: string[];
+  /** Name + physical description of each selected cast member, for consistency. */
+  characters: { name: string; note: string }[];
   seed: string;
 }
 
@@ -121,7 +123,17 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
       toast.error("Give the story a little more to work with (12+ characters).");
       return;
     }
-    onGenerate({ story, style, layout, pages, characterIds: selected, seed });
+    onGenerate({
+      story,
+      style,
+      layout,
+      pages,
+      characterIds: selected,
+      characters: characters
+        .filter((c) => selected.includes(c.id))
+        .map((c) => ({ name: c.name, note: c.note })),
+      seed,
+    });
   }
 
   return (

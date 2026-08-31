@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,8 +8,9 @@ import { AppHeader } from "@/components/app-header";
 import { ComicStage } from "@/components/comic-stage";
 import { StudioForm, type GenerationConfig } from "@/components/studio-form";
 import { Button } from "@/components/ui/button";
-import { buildPanelPlan, demoImageFor, type Panel } from "@/lib/comic";
+import { ART_STYLES, LAYOUTS, type Panel } from "@/lib/comic";
 import { saveComic } from "@/lib/comics.functions";
+import { generatePanelImage, generateScript } from "@/lib/generate.functions";
 
 export const Route = createFileRoute("/_authenticated/studio")({
   head: () => ({
@@ -34,46 +35,95 @@ export const Route = createFileRoute("/_authenticated/studio")({
 
 type Phase = "studio" | "comic";
 
+/** Renders panels a few at a time so art streams in without hammering the API. */
+async function pooled<T>(items: T[], limit: number, worker: (item: T) => Promise<void>) {
+  const queue = [...items];
+  await Promise.all(
+    Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      while (queue.length) {
+        const next = queue.shift();
+        if (next === undefined) return;
+        await worker(next);
+      }
+    }),
+  );
+}
+
 function Studio() {
   const [phase, setPhase] = useState<Phase>("studio");
   const [config, setConfig] = useState<GenerationConfig | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [title, setTitle] = useState("Untitled comic");
   const persist = useServerFn(saveComic);
+  const writeScript = useServerFn(generateScript);
+  const drawPanel = useServerFn(generatePanelImage);
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  function updatePanel(id: string, patch: Partial<Panel>) {
+    setPanels((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }
 
-  /**
-   * Preview-stage generation. Panels resolve one at a time so the UI models the
-   * real streaming pipeline; swapping this for the Gemini calls only changes
-   * where `image` comes from.
-   */
-  const runGeneration = useCallback((plan: Panel[]) => {
-    plan.forEach((panel, i) => {
-      const t = setTimeout(
-        () => {
-          setPanels((prev) =>
-            prev.map((p) =>
-              p.id === panel.id ? { ...p, status: "ready", image: demoImageFor(i) } : p,
-            ),
-          );
-        },
-        700 + i * 650,
-      );
-      timers.current.push(t);
-    });
-  }, []);
+  async function handleGenerate(next: GenerationConfig) {
+    const style = ART_STYLES.find((s) => s.id === next.style)!;
+    const perPage = LAYOUTS.find((l) => l.id === next.layout)?.panelsPerPage ?? 4;
 
-  function handleGenerate(next: GenerationConfig) {
-    const plan = buildPanelPlan(next.pages, next.layout);
     setConfig(next);
-    setPanels(plan);
+    setPanels([]);
     setSavedId(null);
+    setTitle("Untitled comic");
     setPhase("comic");
-    runGeneration(plan);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    let script;
+    try {
+      script = await writeScript({
+        data: {
+          story: next.story,
+          styleName: style.name,
+          styleFragment: style.promptFragment,
+          pages: next.pages,
+          panelsPerPage: perPage,
+          characters: next.characters,
+          ...(next.seed ? { seed: next.seed } : {}),
+        },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not write the script.");
+      setPhase("studio");
+      return;
+    }
+
+    const plan: Panel[] = script.panels.map((p) => ({
+      id: `p${p.page}-${p.index}`,
+      page: p.page,
+      index: p.index,
+      camera: p.camera,
+      prompt: p.prompt,
+      status: "drawing",
+      bubbles: p.bubbles.map((b, bi) => ({ ...b, id: `p${p.page}-${p.index}-b${bi}` })),
+    }));
+
+    setTitle(script.title);
+    setPanels(plan);
+    toast.success("Script ready — inking panels…");
+
+    await pooled(plan, 2, async (panel) => {
+      try {
+        const { image, path } = await drawPanel({
+          data: {
+            prompt: panel.prompt,
+            camera: panel.camera,
+            styleFragment: style.promptFragment,
+            characters: next.characters,
+            ...(next.seed ? { seed: next.seed } : {}),
+          },
+        });
+        updatePanel(panel.id, { status: "ready", image, imagePath: path });
+      } catch {
+        updatePanel(panel.id, { status: "failed" });
+      }
+    });
   }
 
   function editBubble(panelId: string, bubbleId: string, text: string) {
@@ -86,26 +136,31 @@ function Studio() {
     );
   }
 
-  function regenerate(panelId: string) {
-    setPanels((prev) =>
-      prev.map((p) => (p.id === panelId ? { ...p, status: "drawing", image: undefined } : p)),
-    );
+  async function regenerate(panelId: string) {
+    const panel = panels.find((p) => p.id === panelId);
+    if (!panel || !config) return;
+    const style = ART_STYLES.find((s) => s.id === config.style)!;
+
+    updatePanel(panelId, { status: "drawing", image: undefined });
     toast("Redrawing that panel…");
-    const t = setTimeout(() => {
-      setPanels((prev) =>
-        prev.map((p) =>
-          p.id === panelId
-            ? { ...p, status: "ready", image: demoImageFor(Math.floor(Math.random() * 4)) }
-            : p,
-        ),
-      );
-    }, 1400);
-    timers.current.push(t);
+    try {
+      const { image, path } = await drawPanel({
+        data: {
+          prompt: panel.prompt,
+          camera: panel.camera,
+          styleFragment: style.promptFragment,
+          characters: config.characters,
+          seed: Math.random().toString(36).slice(2, 10),
+        },
+      });
+      updatePanel(panelId, { status: "ready", image, imagePath: path });
+    } catch (error) {
+      updatePanel(panelId, { status: "failed" });
+      toast.error(error instanceof Error ? error.message : "Redraw failed.");
+    }
   }
 
   function startOver() {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
     setPhase("studio");
     setPanels([]);
     setSavedId(null);
@@ -117,7 +172,7 @@ function Studio() {
     try {
       const result = await persist({
         data: {
-          title: config.story.slice(0, 60) + (config.story.length > 60 ? "…" : ""),
+          title,
           story: config.story,
           style: config.style,
           layout: config.layout,
@@ -127,6 +182,7 @@ function Studio() {
             index: p.index,
             camera: p.camera,
             prompt: p.prompt,
+            ...(p.imagePath ? { imagePath: p.imagePath } : {}),
             bubbles: p.bubbles,
           })),
         },
@@ -167,13 +223,21 @@ function Studio() {
           config && (
             <>
               <div data-print-hide className="mb-4 flex justify-end">
-                <Button onClick={handleSave} disabled={saving || savedId !== null}>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    saving ||
+                    savedId !== null ||
+                    panels.length === 0 ||
+                    panels.some((p) => p.status === "drawing")
+                  }
+                >
                   {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                   {savedId ? "Saved" : "Save to library"}
                 </Button>
               </div>
               <ComicStage
-                title={config.story.slice(0, 60) + (config.story.length > 60 ? "…" : "")}
+                title={title}
                 style={config.style}
                 layout={config.layout}
                 panels={panels}

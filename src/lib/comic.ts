@@ -214,7 +214,10 @@ export interface Panel {
   index: number;
   camera: string;
   prompt: string;
+  /** Displayable URL (signed) for the rendered panel art. */
   image?: string | undefined;
+  /** Storage path of the art in the private `comic-panels` bucket. */
+  imagePath?: string | undefined;
   status: PanelStatus;
   bubbles: Bubble[];
 }
