@@ -110,7 +110,7 @@ function Studio() {
 
     await pooled(plan, 2, async (panel) => {
       try {
-        const { image } = await drawPanel({
+        const { image, path } = await drawPanel({
           data: {
             prompt: panel.prompt,
             camera: panel.camera,
@@ -119,7 +119,7 @@ function Studio() {
             ...(next.seed ? { seed: next.seed } : {}),
           },
         });
-        updatePanel(panel.id, { status: "ready", image });
+        updatePanel(panel.id, { status: "ready", image, imagePath: path });
       } catch {
         updatePanel(panel.id, { status: "failed" });
       }
@@ -144,7 +144,7 @@ function Studio() {
     updatePanel(panelId, { status: "drawing", image: undefined });
     toast("Redrawing that panel…");
     try {
-      const { image } = await drawPanel({
+      const { image, path } = await drawPanel({
         data: {
           prompt: panel.prompt,
           camera: panel.camera,
@@ -153,7 +153,7 @@ function Studio() {
           seed: Math.random().toString(36).slice(2, 10),
         },
       });
-      updatePanel(panelId, { status: "ready", image });
+      updatePanel(panelId, { status: "ready", image, imagePath: path });
     } catch (error) {
       updatePanel(panelId, { status: "failed" });
       toast.error(error instanceof Error ? error.message : "Redraw failed.");
@@ -182,7 +182,7 @@ function Studio() {
             index: p.index,
             camera: p.camera,
             prompt: p.prompt,
-            ...(p.image ? { image: p.image } : {}),
+            ...(p.imagePath ? { imagePath: p.imagePath } : {}),
             bubbles: p.bubbles,
           })),
         },
