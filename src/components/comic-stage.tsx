@@ -23,6 +23,8 @@ interface ComicStageProps {
   onEditBubble: (panelId: string, bubbleId: string, text: string) => void;
   onRegenerate: (panelId: string) => void;
   onStartOver: () => void;
+  /** True while pass 1 (the script) is still being written and no panels exist yet. */
+  scripting?: boolean;
 }
 
 function bubbleShape(kind: Bubble["kind"]) {
