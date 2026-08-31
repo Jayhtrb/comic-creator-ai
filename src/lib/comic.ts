@@ -200,11 +200,14 @@ export interface Bubble {
   id: string;
   speaker: string;
   text: string;
-  /** Percentage position within the panel. */
+  /** Percentage position within the panel (centre point when `pinned`). */
   x: number;
   y: number;
   kind: "speech" | "thought" | "caption";
+  /** True once the reader has dragged this bubble — manual position wins. */
+  pinned?: boolean | undefined;
 }
+
 
 export type PanelStatus = "queued" | "drawing" | "ready" | "failed";
 
