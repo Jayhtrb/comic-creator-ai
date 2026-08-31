@@ -448,7 +448,9 @@ export function ComicStage({
                 <PanelView
                   key={panel.id}
                   panel={panel}
-                  onEditBubble={(bubbleId, text) => onEditBubble(panel.id, bubbleId, text)}
+                  onPatchBubble={(bubbleId, patch) => onPatchBubble(panel.id, bubbleId, patch)}
+                  onResetBubbles={() => onResetBubbles(panel.id)}
+
                   onRegenerate={() => onRegenerate(panel.id)}
                 />
               ))}
