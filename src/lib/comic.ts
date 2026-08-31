@@ -178,8 +178,14 @@ export interface CharacterRef {
   id: string;
   name: string;
   note: string;
+  /** Displayable image URLs (signed for saved characters). */
   images: string[];
+  /** Storage paths in the private `character-refs` bucket, for saved characters. */
+  refPaths?: string[];
+  /** True when this character lives in the user's Supabase library. */
+  saved?: boolean;
 }
+
 
 export const DEMO_CHARACTERS: CharacterRef[] = [
   {
