@@ -217,9 +217,8 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
       refs.length
-        ? `Reference images are attached: match the attached characters' faces, hair, build,` +
-          ` outfit and colour palette closely, but redraw them fully in the art style below —` +
-          ` never paste or photo-collage the reference.`
+        ? `${referenceFragment(data.refStrength)} Never paste, crop or photo-collage the` +
+          ` reference itself — always redraw it.`
         : "",
       `Art direction: ${data.styleFragment}.`,
       `Full-bleed artwork with a clean composition: keep faces and key action in the`,
