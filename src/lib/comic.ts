@@ -161,7 +161,124 @@ export const ART_STYLES: ArtStyle[] = [
     promptFragment:
       "vintage 1950s comic print, faded four-color offset, visible halftone dots, aged newsprint",
   },
+  {
+    id: "indie-ink",
+    name: "Indie Ink",
+    blurb: "Scratchy underground comix",
+    thumb: indieInk,
+    promptFragment:
+      "gritty independent underground comix art, scratchy hand-inked crosshatching, rough organic linework, limited two-tone spot color",
+  },
+  {
+    id: "newspaper",
+    name: "Newspaper Strip",
+    blurb: "Sunday funnies charm",
+    thumb: newspaper,
+    promptFragment:
+      "classic Sunday newspaper comic strip art, simple bouncy cartoon linework, flat cheerful primary colors, coarse newsprint dot texture",
+  },
+  {
+    id: "art-deco",
+    name: "Art Deco Poster",
+    blurb: "Geometric, gold & teal",
+    thumb: artDeco,
+    promptFragment:
+      "art deco poster illustration, bold geometric shapes, strong symmetry, gold cream and deep teal palette, stylized sunburst rays",
+  },
+  {
+    id: "pencil",
+    name: "Pencil Sketch",
+    blurb: "Raw graphite roughs",
+    thumb: pencil,
+    promptFragment:
+      "raw graphite pencil sketchbook drawing, visible construction lines, smudged hatching, off-white paper tone, no color",
+  },
+  {
+    id: "steampunk",
+    name: "Steampunk",
+    blurb: "Brass, gears, airships",
+    thumb: steampunk,
+    promptFragment:
+      "steampunk illustration, brass gears goggles and airships, warm sepia and copper palette, finely etched victorian linework",
+  },
+  {
+    id: "gothic-horror",
+    name: "Gothic Horror",
+    blurb: "Fog, ink and dread",
+    thumb: gothicHorror,
+    promptFragment:
+      "gothic horror comic art, heavy black ink, sickly green and blood red accents, creeping fog, unsettling deep shadows",
+  },
+  {
+    id: "pop-art",
+    name: "Pop Art",
+    blurb: "Ben-Day dots, 1960s punch",
+    thumb: popArt,
+    promptFragment:
+      "1960s pop art comic panel, thick black outlines, oversized Ben-Day dots, flat red yellow and blue, bold graphic drama",
+  },
+  {
+    id: "flat-vector",
+    name: "Flat Vector",
+    blurb: "Clean modern shapes",
+    thumb: flatVector,
+    promptFragment:
+      "modern flat vector illustration, clean geometric shapes with no outlines, bold coral and navy palette, crisp minimal detail",
+  },
 ];
+
+/** How hard the renderer should push toward the uploaded reference art. */
+export interface ReferenceStrength {
+  value: number;
+  label: string;
+  hint: string;
+  /** Prompt fragment injected when reference images are attached. */
+  fragment: string;
+}
+
+export const REFERENCE_STRENGTHS: ReferenceStrength[] = [
+  {
+    value: 1,
+    label: "Loose",
+    hint: "Inspiration only — the art style leads",
+    fragment:
+      "Treat the attached reference images as loose inspiration only: borrow the general vibe and colour mood, but feel free to reinterpret the characters freely in the art style.",
+  },
+  {
+    value: 2,
+    label: "Guided",
+    hint: "Keeps the broad look",
+    fragment:
+      "Use the attached reference images as a guide: keep each character's broad silhouette, hair colour and outfit colours recognisable while restyling them.",
+  },
+  {
+    value: 3,
+    label: "Balanced",
+    hint: "Recognisable, fully restyled",
+    fragment:
+      "Match the attached reference images closely for face shape, hair, build, outfit and colour palette, while redrawing everything in the chosen art style.",
+  },
+  {
+    value: 4,
+    label: "Strong",
+    hint: "Faithful likeness",
+    fragment:
+      "Reproduce the attached reference characters faithfully: same facial features and proportions, same hairstyle, same outfit details and exact colours. Only the rendering technique changes to suit the art style.",
+  },
+  {
+    value: 5,
+    label: "Locked",
+    hint: "Maximum likeness",
+    fragment:
+      "The attached reference images are the definitive character sheet. The likeness must be unmistakable: identical facial structure, eye and hair colour, hairstyle, body proportions, outfit, accessories and colour values in every panel. Do not invent variations, do not age or restyle the characters, and never swap their clothing.",
+  },
+];
+
+export function referenceFragment(strength: number): string {
+  const match =
+    REFERENCE_STRENGTHS.find((s) => s.value === strength) ?? REFERENCE_STRENGTHS[2]!;
+  return match.fragment;
+}
 
 export type LayoutId = "auto" | "classic-4" | "manga-6" | "splash" | "storyboard";
 
