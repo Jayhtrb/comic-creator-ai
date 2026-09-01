@@ -211,6 +211,7 @@ export const generatePanelImage = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => imageInput.parse(data))
   .handler(async ({ data, context }) => {
     const cast = data.characters.map((c) => `${c.name} (${c.note})`).join("; ");
+    const names = data.characters.map((c) => c.name).filter(Boolean);
 
     // Pull the user's reference art so the model sees the actual faces/outfits,
     // not just a text description of them.
