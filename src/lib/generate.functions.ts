@@ -76,9 +76,21 @@ export const generateScript = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => scriptInput.parse(data))
   .handler(async ({ data }) => {
     const total = data.pages * data.panelsPerPage;
+    const named = data.characters.map((c) => c.name).filter(Boolean);
     const cast = data.characters.length
       ? data.characters.map((c) => `- ${c.name}: ${c.note}`).join("\n")
       : "- Invent a small, memorable cast and keep them consistent.";
+    const castLock = named.length
+      ? [
+          `CLOSED CAST — the ONLY people who may appear anywhere in this comic are: ${named.join(", ")}.`,
+          `Never introduce, draw or name any other person: no extra friends, rivals, bystanders,`,
+          `crowds, passers-by, silhouettes, reflections of other people, or background figures.`,
+          `If the story itself explicitly names another character, that character may appear — otherwise,`,
+          `keep every panel limited to the cast above and empty environment.`,
+          `Every "prompt" must state the exact number of people visible (e.g. "only two people are visible:`,
+          `${named.slice(0, 2).join(" and ") || named[0]}") and say "no other people, no bystanders, no crowd".`,
+        ].join("\n")
+      : `Keep the cast as small as the story requires. Do not add background people, crowds or bystanders unless the story explicitly calls for them.`;
 
     const json = await callGemini(TEXT_MODEL, {
       contents: [
@@ -95,6 +107,8 @@ export const generateScript = createServerFn({ method: "POST" })
                 ``,
                 `RECURRING CAST (keep descriptions identical in every panel prompt):\n${cast}`,
                 ``,
+                castLock,
+                ``,
                 `Art style: ${data.styleName} — ${data.styleFragment}`,
                 data.seed ? `Creative seed: ${data.seed}` : ``,
                 ``,
@@ -108,6 +122,7 @@ export const generateScript = createServerFn({ method: "POST" })
                 `- bubbles: 0-2 balloons only, under 70 characters each so they fit in a corner.`,
                 `  x/y are hints: x below 40 for a left-side speaker, above 60 for a right-side`,
                 `  speaker; the app snaps balloons to safe corners. Use "caption" for narration.`,
+                `  Only cast members listed above may speak.`,
                 `Number pages from 1 and panel index from 0 within each page.`,
 
               ]
@@ -196,6 +211,7 @@ export const generatePanelImage = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => imageInput.parse(data))
   .handler(async ({ data, context }) => {
     const cast = data.characters.map((c) => `${c.name} (${c.note})`).join("; ");
+    const names = data.characters.map((c) => c.name).filter(Boolean);
 
     // Pull the user's reference art so the model sees the actual faces/outfits,
     // not just a text description of them.
@@ -217,6 +233,12 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       data.camera ? `Shot: ${data.camera}.` : "",
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
+      names.length
+        ? `Cast lock: the only people allowed in this panel are ${names.join(" and ")}` +
+          ` — and only those of them the scene description mentions. Draw no additional people:` +
+          ` no extra characters, no bystanders, no crowd, no background figures, no silhouettes,` +
+          ` no reflections or portraits of other people. An empty street or room is correct.`
+        : `Do not add extra people, bystanders, crowds or background figures beyond those the scene describes.`,
       refs.length
         ? `${referenceFragment(data.refStrength)} Never paste, crop or photo-collage the` +
           ` reference itself — always redraw it.`

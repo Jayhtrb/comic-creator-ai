@@ -25,6 +25,11 @@ import steampunk from "@/assets/styles/steampunk.jpg";
 import gothicHorror from "@/assets/styles/gothic-horror.jpg";
 import popArt from "@/assets/styles/pop-art.jpg";
 import flatVector from "@/assets/styles/flat-vector.jpg";
+import darkRomantic from "@/assets/styles/dark-romantic.jpg";
+import graphicNoir from "@/assets/styles/graphic-noir.jpg";
+import seinenNoir from "@/assets/styles/seinen-noir.jpg";
+import pulp from "@/assets/styles/pulp.jpg";
+import gonzo from "@/assets/styles/gonzo.jpg";
 
 import panel1 from "@/assets/demo/panel-1.jpg";
 import panel2 from "@/assets/demo/panel-2.jpg";
@@ -53,7 +58,12 @@ export type ArtStyleId =
   | "steampunk"
   | "gothic-horror"
   | "pop-art"
-  | "flat-vector";
+  | "flat-vector"
+  | "dark-romantic"
+  | "graphic-noir"
+  | "seinen-noir"
+  | "pulp"
+  | "gonzo";
 
 export interface ArtStyle {
   id: ArtStyleId;
@@ -224,6 +234,46 @@ export const ART_STYLES: ArtStyle[] = [
     thumb: flatVector,
     promptFragment:
       "modern flat vector illustration, clean geometric shapes with no outlines, bold coral and navy palette, crisp minimal detail",
+  },
+  {
+    id: "dark-romantic",
+    name: "Dark Cinematic Romantic Realism",
+    blurb: "Moody, painterly, intimate",
+    thumb: darkRomantic,
+    promptFragment:
+      "dark cinematic romantic realism, painterly photoreal rendering, warm rim light against deep shadow, filmic colour grade, intimate emotive expressions, shallow depth of field",
+  },
+  {
+    id: "graphic-noir",
+    name: "Graphic Novel Noir",
+    blurb: "Flat shapes, heavy black",
+    thumb: graphicNoir,
+    promptFragment:
+      "graphic novel noir art, flat stylised shapes, huge fields of solid black, desaturated muted palette with one cold accent, stark negative space",
+  },
+  {
+    id: "seinen-noir",
+    name: "Seinen Noir",
+    blurb: "Adult manga grit",
+    thumb: seinenNoir,
+    promptFragment:
+      "gritty seinen manga noir, realistic adult proportions, dense fine crosshatching and screentone, harsh contrast black and white, weary cinematic staging",
+  },
+  {
+    id: "pulp",
+    name: "Pulp Magazine",
+    blurb: "Lurid 1940s gouache",
+    thumb: pulp,
+    promptFragment:
+      "1940s pulp magazine cover painting, lurid saturated gouache, dramatic melodramatic staging, hard directional light, aged paper texture",
+  },
+  {
+    id: "gonzo",
+    name: "Gonzo Illustrator",
+    blurb: "Splattered ink caricature",
+    thumb: gonzo,
+    promptFragment:
+      "gonzo illustration, frantic splattered ink and violent brush strokes, warped exaggerated caricature anatomy, garish accent colours on raw white paper",
   },
 ];
 
