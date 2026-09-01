@@ -17,6 +17,14 @@ import pixel from "@/assets/styles/pixel.jpg";
 import cgi from "@/assets/styles/cgi.jpg";
 import webtoon from "@/assets/styles/webtoon.jpg";
 import retro from "@/assets/styles/retro.jpg";
+import indieInk from "@/assets/styles/indie-ink.jpg";
+import newspaper from "@/assets/styles/newspaper.jpg";
+import artDeco from "@/assets/styles/art-deco.jpg";
+import pencil from "@/assets/styles/pencil.jpg";
+import steampunk from "@/assets/styles/steampunk.jpg";
+import gothicHorror from "@/assets/styles/gothic-horror.jpg";
+import popArt from "@/assets/styles/pop-art.jpg";
+import flatVector from "@/assets/styles/flat-vector.jpg";
 
 import panel1 from "@/assets/demo/panel-1.jpg";
 import panel2 from "@/assets/demo/panel-2.jpg";
