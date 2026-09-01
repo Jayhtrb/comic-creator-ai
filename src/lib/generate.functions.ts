@@ -107,6 +107,8 @@ export const generateScript = createServerFn({ method: "POST" })
                 ``,
                 `RECURRING CAST (keep descriptions identical in every panel prompt):\n${cast}`,
                 ``,
+                castLock,
+                ``,
                 `Art style: ${data.styleName} — ${data.styleFragment}`,
                 data.seed ? `Creative seed: ${data.seed}` : ``,
                 ``,
@@ -120,6 +122,7 @@ export const generateScript = createServerFn({ method: "POST" })
                 `- bubbles: 0-2 balloons only, under 70 characters each so they fit in a corner.`,
                 `  x/y are hints: x below 40 for a left-side speaker, above 60 for a right-side`,
                 `  speaker; the app snaps balloons to safe corners. Use "caption" for narration.`,
+                `  Only cast members listed above may speak.`,
                 `Number pages from 1 and panel index from 0 within each page.`,
 
               ]
