@@ -76,9 +76,21 @@ export const generateScript = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => scriptInput.parse(data))
   .handler(async ({ data }) => {
     const total = data.pages * data.panelsPerPage;
+    const named = data.characters.map((c) => c.name).filter(Boolean);
     const cast = data.characters.length
       ? data.characters.map((c) => `- ${c.name}: ${c.note}`).join("\n")
       : "- Invent a small, memorable cast and keep them consistent.";
+    const castLock = named.length
+      ? [
+          `CLOSED CAST — the ONLY people who may appear anywhere in this comic are: ${named.join(", ")}.`,
+          `Never introduce, draw or name any other person: no extra friends, rivals, bystanders,`,
+          `crowds, passers-by, silhouettes, reflections of other people, or background figures.`,
+          `If the story itself explicitly names another character, that character may appear — otherwise,`,
+          `keep every panel limited to the cast above and empty environment.`,
+          `Every "prompt" must state the exact number of people visible (e.g. "only two people are visible:`,
+          `${named.slice(0, 2).join(" and ") || named[0]}") and say "no other people, no bystanders, no crowd".`,
+        ].join("\n")
+      : `Keep the cast as small as the story requires. Do not add background people, crowds or bystanders unless the story explicitly calls for them.`;
 
     const json = await callGemini(TEXT_MODEL, {
       contents: [
