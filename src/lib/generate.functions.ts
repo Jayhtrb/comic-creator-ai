@@ -184,6 +184,8 @@ const imageInput = z.object({
   characters: z.array(characterSchema).max(3).default([]),
   /** Storage paths of reference art in the private `character-refs` bucket. */
   refPaths: z.array(z.string().max(400)).max(6).default([]),
+  /** 1 (loose inspiration) → 5 (locked likeness). */
+  refStrength: z.number().int().min(1).max(5).default(3),
   seed: z.string().max(60).optional(),
 });
 
