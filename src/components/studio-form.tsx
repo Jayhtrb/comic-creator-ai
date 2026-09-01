@@ -26,13 +26,21 @@ import {
   ART_STYLES,
   DEMO_CHARACTERS,
   LAYOUTS,
+  REFERENCE_STRENGTHS,
   STORY_PLACEHOLDER,
   SURPRISE_PROMPTS,
   type ArtStyleId,
   type CharacterRef,
   type LayoutId,
 } from "@/lib/comic";
-import { deleteCharacter, listCharacters, saveCharacter } from "@/lib/characters.functions";
+import {
+  deleteCharacter,
+  deleteCharacterSet,
+  listCharacters,
+  listCharacterSets,
+  saveCharacter,
+  saveCharacterSet,
+} from "@/lib/characters.functions";
 import { cn } from "@/lib/utils";
 
 export interface GenerationConfig {
@@ -45,6 +53,8 @@ export interface GenerationConfig {
   characters: { name: string; note: string }[];
   /** Storage paths of the selected cast's saved reference art. */
   refPaths: string[];
+  /** 1 (loose inspiration) → 5 (locked likeness). */
+  refStrength: number;
   seed: string;
 }
 
