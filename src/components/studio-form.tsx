@@ -179,6 +179,8 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   });
 
   const activeStyle = ART_STYLES.find((s) => s.id === style)!;
+  const strengthPreset =
+    REFERENCE_STRENGTHS.find((s) => s.value === refStrength) ?? REFERENCE_STRENGTHS[2]!;
 
   function toggleCharacter(id: string) {
     setSelected((prev) =>
