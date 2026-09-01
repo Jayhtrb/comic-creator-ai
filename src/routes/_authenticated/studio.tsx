@@ -121,6 +121,7 @@ function Studio() {
             styleFragment: style.promptFragment,
             characters: next.characters,
             refPaths: next.refPaths,
+            refStrength: next.refStrength,
 
             ...(next.seed ? { seed: next.seed } : {}),
           },
@@ -172,6 +173,7 @@ function Studio() {
           styleFragment: style.promptFragment,
           characters: config.characters,
           refPaths: config.refPaths,
+          refStrength: config.refStrength,
 
           seed: Math.random().toString(36).slice(2, 10),
         },

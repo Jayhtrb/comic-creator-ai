@@ -26,13 +26,21 @@ import {
   ART_STYLES,
   DEMO_CHARACTERS,
   LAYOUTS,
+  REFERENCE_STRENGTHS,
   STORY_PLACEHOLDER,
   SURPRISE_PROMPTS,
   type ArtStyleId,
   type CharacterRef,
   type LayoutId,
 } from "@/lib/comic";
-import { deleteCharacter, listCharacters, saveCharacter } from "@/lib/characters.functions";
+import {
+  deleteCharacter,
+  deleteCharacterSet,
+  listCharacters,
+  listCharacterSets,
+  saveCharacter,
+  saveCharacterSet,
+} from "@/lib/characters.functions";
 import { cn } from "@/lib/utils";
 
 export interface GenerationConfig {
@@ -45,6 +53,8 @@ export interface GenerationConfig {
   characters: { name: string; note: string }[];
   /** Storage paths of the selected cast's saved reference art. */
   refPaths: string[];
+  /** 1 (loose inspiration) → 5 (locked likeness). */
+  refStrength: number;
   seed: string;
 }
 
@@ -106,16 +116,27 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: "", note: "" });
   const [uploading, setUploading] = useState(false);
+  const [refStrength, setRefStrength] = useState(3);
+  const [activeSet, setActiveSet] = useState<string | null>(null);
+  const [setName, setSetName] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
   const fetchCharacters = useServerFn(listCharacters);
   const persistCharacter = useServerFn(saveCharacter);
   const removeCharacter = useServerFn(deleteCharacter);
+  const fetchSets = useServerFn(listCharacterSets);
+  const persistSet = useServerFn(saveCharacterSet);
+  const removeSet = useServerFn(deleteCharacterSet);
 
   const saved = useQuery({
     queryKey: ["characters"],
     queryFn: () => fetchCharacters(),
+  });
+
+  const sets = useQuery({
+    queryKey: ["character-sets"],
+    queryFn: () => fetchSets(),
   });
 
   const savedCharacters: CharacterRef[] = (saved.data ?? []).map((c) => ({
@@ -158,6 +179,8 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   });
 
   const activeStyle = ART_STYLES.find((s) => s.id === style)!;
+  const strengthPreset =
+    REFERENCE_STRENGTHS.find((s) => s.value === refStrength) ?? REFERENCE_STRENGTHS[2]!;
 
   function toggleCharacter(id: string) {
     setSelected((prev) =>
@@ -232,9 +255,61 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
       characterIds: selected,
       characters: cast.map((c) => ({ name: c.name, note: c.note })),
       refPaths: cast.flatMap((c) => c.refPaths ?? []),
+      refStrength,
       seed,
     });
   }
+
+  const setSaveMutation = useMutation({
+    mutationFn: (input: { id?: string; name: string; characterIds: string[] }) =>
+      persistSet({
+        data: {
+          ...(input.id ? { id: input.id } : {}),
+          name: input.name,
+          characterIds: input.characterIds,
+        },
+      }),
+    onSuccess: ({ id }) => {
+      setActiveSet(id);
+      setSetName("");
+      queryClient.invalidateQueries({ queryKey: ["character-sets"] });
+      toast.success("Reference set saved");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save that set."),
+  });
+
+  const setDeleteMutation = useMutation({
+    mutationFn: (id: string) => removeSet({ data: { id } }),
+    onSuccess: (_r, id) => {
+      setActiveSet((prev) => (prev === id ? null : prev));
+      queryClient.invalidateQueries({ queryKey: ["character-sets"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not delete that set."),
+  });
+
+  /** Loads a saved set's cast into the current selection. */
+  function applySet(id: string, ids: string[]) {
+    const usable = ids.filter((cid) => characters.some((c) => c.id === cid)).slice(0, 3);
+    setActiveSet(id);
+    setSelected(usable);
+    if (!usable.length) toast("That set's characters are no longer in your library.");
+  }
+
+  function saveCurrentSet() {
+    const name = setName.trim();
+    if (!name) {
+      toast.error("Give the set a name first.");
+      return;
+    }
+    if (!selected.length) {
+      toast.error("Select at least one character to save as a set.");
+      return;
+    }
+    setSaveMutation.mutate({ name, characterIds: selected });
+  }
+
 
 
   return (
@@ -386,7 +461,114 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
             onChange={(e) => handleUpload(e.target.files)}
           />
         </div>
+
+        <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">Reference match strength</p>
+            <p className="text-xs text-muted-foreground">
+              {strengthPreset.label} — {strengthPreset.hint}
+            </p>
+          </div>
+          <Slider
+            value={[refStrength]}
+            min={1}
+            max={5}
+            step={1}
+            onValueChange={([v]) => setRefStrength(v ?? 3)}
+            className="mt-4"
+            aria-label="Reference match strength"
+          />
+          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+            {REFERENCE_STRENGTHS.map((s) => (
+              <span key={s.value}>{s.label}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">Named reference sets</p>
+            <p className="text-xs text-muted-foreground">
+              Save this cast and reload it on any future run.
+            </p>
+          </div>
+
+          {sets.data && sets.data.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {sets.data.map((s) => (
+                <span
+                  key={s.id}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-1 py-0.5 pl-3 text-xs transition-colors",
+                    activeSet === s.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:border-input",
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="font-medium"
+                    onClick={() => applySet(s.id, s.characterIds)}
+                  >
+                    {s.name}
+                    <span className="ml-1 text-muted-foreground">({s.characterIds.length})</span>
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-6"
+                    title={`Delete "${s.name}"`}
+                    onClick={() => setDeleteMutation.mutate(s.id)}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Input
+              value={setName}
+              onChange={(e) => setSetName(e.target.value)}
+              placeholder="Name this cast, e.g. Kestrel crew"
+              className="h-9 max-w-xs text-sm"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={setSaveMutation.isPending}
+              onClick={saveCurrentSet}
+            >
+              {setSaveMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Save set
+            </Button>
+            {activeSet && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={setSaveMutation.isPending}
+                onClick={() => {
+                  const current = sets.data?.find((s) => s.id === activeSet);
+                  if (current)
+                    setSaveMutation.mutate({
+                      id: current.id,
+                      name: current.name,
+                      characterIds: selected,
+                    });
+                }}
+              >
+                Update active set
+              </Button>
+            )}
+          </div>
+        </div>
       </Card>
+
 
       <Card>
         <SectionHeading

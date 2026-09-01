@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { referenceFragment } from "./comic";
 import { requireSupabaseAuth } from "./supabase/auth-middleware";
 
 /**
@@ -184,6 +185,8 @@ const imageInput = z.object({
   characters: z.array(characterSchema).max(3).default([]),
   /** Storage paths of reference art in the private `character-refs` bucket. */
   refPaths: z.array(z.string().max(400)).max(6).default([]),
+  /** 1 (loose inspiration) → 5 (locked likeness). */
+  refStrength: z.number().int().min(1).max(5).default(3),
   seed: z.string().max(60).optional(),
 });
 
@@ -215,9 +218,8 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
       refs.length
-        ? `Reference images are attached: match the attached characters' faces, hair, build,` +
-          ` outfit and colour palette closely, but redraw them fully in the art style below —` +
-          ` never paste or photo-collage the reference.`
+        ? `${referenceFragment(data.refStrength)} Never paste, crop or photo-collage the` +
+          ` reference itself — always redraw it.`
         : "",
       `Art direction: ${data.styleFragment}.`,
       `Full-bleed artwork with a clean composition: keep faces and key action in the`,
