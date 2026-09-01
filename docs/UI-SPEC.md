@@ -75,7 +75,278 @@ The root component also mounts the toaster once: `<Toaster position="top-center"
 ### `src/styles.css` — verbatim
 
 ```css
-<!--STYLES-->
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Comic Crafter AI design system.
+ * Locked palette: cream #F8F6F0, ink #1A1A1E, comic red #E53E3E,
+ * golden #F6AD55, emerald #48BB78. Poppins headings / Inter body /
+ * Comic Neue speech bubbles. All values in oklch.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-comic: "Comic Neue", "Comic Sans MS", cursive;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-paper-foreground: var(--paper-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-card: 0 4px 20px oklch(0 0 0 / 0.06);
+  --shadow-lift: 0 12px 32px oklch(0 0 0 / 0.12);
+  --shadow-page: 0 18px 40px oklch(0 0 0 / 0.16);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.973 0.0082 91.48);
+  --foreground: oklch(0.2433 0.0247 263.95);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2433 0.0247 263.95);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2433 0.0247 263.95);
+  --primary: oklch(0.6137 0.2039 25.56);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9834 0.0042 236.5);
+  --secondary-foreground: oklch(0.2433 0.0247 263.95);
+  --muted: oklch(0.9834 0.0042 236.5);
+  --muted-foreground: oklch(0.5956 0.0381 257.87);
+  --accent: oklch(0.9822 0.0232 90.75);
+  --accent-foreground: oklch(0.2433 0.0247 263.95);
+  --destructive: oklch(0.6137 0.2039 25.56);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.7096 0.1434 154.53);
+  --success-foreground: oklch(0.2195 0.0077 285.74);
+  --gold: oklch(0.8012 0.1343 68.79);
+  --gold-foreground: oklch(0.2195 0.0077 285.74);
+  --ink: oklch(0.2195 0.0077 285.74);
+  --paper: oklch(0.9822 0.0232 90.75);
+  --paper-foreground: oklch(0.2195 0.0077 285.74);
+  --border: oklch(0.9288 0.0126 255.51);
+  --input: oklch(0.8687 0.0187 250.61);
+  --ring: oklch(0.6137 0.2039 25.56);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.2433 0.0247 263.95);
+  --sidebar-primary: oklch(0.6137 0.2039 25.56);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.9834 0.0042 236.5);
+  --sidebar-accent-foreground: oklch(0.2433 0.0247 263.95);
+  --sidebar-border: oklch(0.9288 0.0126 255.51);
+  --sidebar-ring: oklch(0.6137 0.2039 25.56);
+}
+
+.dark {
+  --background: oklch(0.2195 0.0077 285.74);
+  --foreground: oklch(0.9834 0.0042 236.5);
+  --card: oklch(0.2711 0.011 285.64);
+  --card-foreground: oklch(0.9834 0.0042 236.5);
+  --popover: oklch(0.2711 0.011 285.64);
+  --popover-foreground: oklch(0.9834 0.0042 236.5);
+  --primary: oklch(0.6137 0.2039 25.56);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.3351 0.0331 260.91);
+  --secondary-foreground: oklch(0.9834 0.0042 236.5);
+  --muted: oklch(0.3351 0.0331 260.91);
+  --muted-foreground: oklch(0.7457 0.0304 254.72);
+  --accent: oklch(0.3351 0.0331 260.91);
+  --accent-foreground: oklch(0.9834 0.0042 236.5);
+  --destructive: oklch(0.6137 0.2039 25.56);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.7096 0.1434 154.53);
+  --success-foreground: oklch(0.2195 0.0077 285.74);
+  --gold: oklch(0.8012 0.1343 68.79);
+  --gold-foreground: oklch(0.2195 0.0077 285.74);
+  --ink: oklch(0.2195 0.0077 285.74);
+  --paper: oklch(0.9822 0.0232 90.75);
+  --paper-foreground: oklch(0.2195 0.0077 285.74);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.6137 0.2039 25.56);
+  --sidebar: oklch(0.2711 0.011 285.64);
+  --sidebar-foreground: oklch(0.9834 0.0042 236.5);
+  --sidebar-primary: oklch(0.6137 0.2039 25.56);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.3351 0.0331 260.91);
+  --sidebar-accent-foreground: oklch(0.9834 0.0042 236.5);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.6137 0.2039 25.56);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  h3,
+  h4 {
+    font-weight: 600;
+  }
+}
+
+/* Clean bottom-border-only field treatment */
+@utility field-line {
+  border: 0;
+  border-bottom: 1px solid var(--color-input);
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+  transition: border-color 150ms ease;
+
+  &:focus {
+    outline: none;
+    border-bottom-color: var(--color-primary);
+  }
+}
+
+/* Physical comic page: warm stock + page-curl shadow */
+@utility paper-page {
+  background-color: var(--color-paper);
+  color: var(--color-paper-foreground);
+  box-shadow:
+    var(--shadow-page),
+    0 1px 0 oklch(0 0 0 / 0.08);
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: 0;
+    width: 46px;
+    height: 46px;
+    background: linear-gradient(
+      135deg,
+      transparent 50%,
+      oklch(0 0 0 / 0.08) 50%,
+      oklch(0 0 0 / 0.16) 100%
+    );
+    pointer-events: none;
+  }
+}
+
+@utility lift-on-hover {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+
+  &:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+@keyframes sketch-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.96) rotate(-4deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04) rotate(4deg);
+  }
+}
+
+@utility sketch-pulse {
+  animation: sketch-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ink-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@utility ink-sweep {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-muted) 90%, transparent) 25%,
+    color-mix(in oklab, var(--color-border) 70%, transparent) 50%,
+    color-mix(in oklab, var(--color-muted) 90%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: ink-sweep 1.6s linear infinite;
+}
+
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .paper-page {
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-after: always;
+  }
+}
 ```
 
 ---
