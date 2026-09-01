@@ -319,6 +319,15 @@ export interface CharacterRef {
   saved?: boolean;
 }
 
+/** A named, reusable group of saved characters ("The Kestrel crew"). */
+export interface CharacterSet {
+  id: string;
+  name: string;
+  characterIds: string[];
+}
+
+
+
 
 export const DEMO_CHARACTERS: CharacterRef[] = [
   {
