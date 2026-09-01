@@ -232,6 +232,12 @@ export const generatePanelImage = createServerFn({ method: "POST" })
       data.camera ? `Shot: ${data.camera}.` : "",
       `Scene: ${data.prompt}`,
       cast ? `Character continuity — draw exactly as described: ${cast}.` : "",
+      names.length
+        ? `Cast lock: the only people allowed in this panel are ${names.join(" and ")}` +
+          ` — and only those of them the scene description mentions. Draw no additional people:` +
+          ` no extra characters, no bystanders, no crowd, no background figures, no silhouettes,` +
+          ` no reflections or portraits of other people. An empty street or room is correct.`
+        : `Do not add extra people, bystanders, crowds or background figures beyond those the scene describes.`,
       refs.length
         ? `${referenceFragment(data.refStrength)} Never paste, crop or photo-collage the` +
           ` reference itself — always redraw it.`
