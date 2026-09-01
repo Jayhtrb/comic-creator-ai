@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { referenceFragment } from "./comic";
 import { requireSupabaseAuth } from "./supabase/auth-middleware";
 
 /**
