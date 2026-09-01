@@ -45,7 +45,15 @@ export type ArtStyleId =
   | "pixel"
   | "cgi"
   | "webtoon"
-  | "retro";
+  | "retro"
+  | "indie-ink"
+  | "newspaper"
+  | "art-deco"
+  | "pencil"
+  | "steampunk"
+  | "gothic-horror"
+  | "pop-art"
+  | "flat-vector";
 
 export interface ArtStyle {
   id: ArtStyleId;
