@@ -116,16 +116,27 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: "", note: "" });
   const [uploading, setUploading] = useState(false);
+  const [refStrength, setRefStrength] = useState(3);
+  const [activeSet, setActiveSet] = useState<string | null>(null);
+  const [setName, setSetName] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
   const fetchCharacters = useServerFn(listCharacters);
   const persistCharacter = useServerFn(saveCharacter);
   const removeCharacter = useServerFn(deleteCharacter);
+  const fetchSets = useServerFn(listCharacterSets);
+  const persistSet = useServerFn(saveCharacterSet);
+  const removeSet = useServerFn(deleteCharacterSet);
 
   const saved = useQuery({
     queryKey: ["characters"],
     queryFn: () => fetchCharacters(),
+  });
+
+  const sets = useQuery({
+    queryKey: ["character-sets"],
+    queryFn: () => fetchSets(),
   });
 
   const savedCharacters: CharacterRef[] = (saved.data ?? []).map((c) => ({
