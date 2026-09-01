@@ -130,3 +130,84 @@ export const deleteCharacter = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ------------------------------------------------------------------ *
+ * Named character reference sets
+ * ------------------------------------------------------------------ */
+
+/** True when the optional `character_sets` table hasn't been created yet. */
+function isMissingTable(error: { code?: string; message?: string } | null) {
+  return error?.code === "42P01" || /character_sets/i.test(error?.message ?? "");
+}
+
+/** Lists the user's saved reference sets (empty until the table exists). */
+export const listCharacterSets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("character_sets")
+      .select("id, name, character_ids, created_at")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isMissingTable(error)) return [];
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      name: (row.name as string) ?? "Untitled set",
+      characterIds: ((row.character_ids as string[] | null) ?? []).filter(Boolean),
+    }));
+  });
+
+const setInput = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(80),
+  characterIds: z.array(z.string().max(64)).max(3).default([]),
+});
+
+/** Creates or renames a named reference set. */
+export const saveCharacterSet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => setInput.parse(data))
+  .handler(async ({ data, context }) => {
+    if (data.id) {
+      const { error } = await context.supabase
+        .from("character_sets")
+        .update({ name: data.name, character_ids: data.characterIds })
+        .eq("id", data.id)
+        .eq("user_id", context.userId);
+      if (error) throw new Error(missingTableMessage(error));
+      return { id: data.id };
+    }
+
+    const { data: row, error } = await context.supabase
+      .from("character_sets")
+      .insert({ user_id: context.userId, name: data.name, character_ids: data.characterIds })
+      .select("id")
+      .single();
+    if (error) throw new Error(missingTableMessage(error));
+    return { id: row.id as string };
+  });
+
+/** Deletes a named reference set (the characters themselves are untouched). */
+export const deleteCharacterSet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("character_sets")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(missingTableMessage(error));
+    return { ok: true };
+  });
+
+function missingTableMessage(error: { code?: string; message?: string }) {
+  return isMissingTable(error)
+    ? "Reference sets need one more table — run docs/migrations/002-character-sets.sql in Supabase."
+    : (error.message ?? "Could not save that set.");
+}
