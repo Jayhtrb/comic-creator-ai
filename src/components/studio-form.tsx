@@ -253,9 +253,61 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
       characterIds: selected,
       characters: cast.map((c) => ({ name: c.name, note: c.note })),
       refPaths: cast.flatMap((c) => c.refPaths ?? []),
+      refStrength,
       seed,
     });
   }
+
+  const setSaveMutation = useMutation({
+    mutationFn: (input: { id?: string; name: string; characterIds: string[] }) =>
+      persistSet({
+        data: {
+          ...(input.id ? { id: input.id } : {}),
+          name: input.name,
+          characterIds: input.characterIds,
+        },
+      }),
+    onSuccess: ({ id }) => {
+      setActiveSet(id);
+      setSetName("");
+      queryClient.invalidateQueries({ queryKey: ["character-sets"] });
+      toast.success("Reference set saved");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not save that set."),
+  });
+
+  const setDeleteMutation = useMutation({
+    mutationFn: (id: string) => removeSet({ data: { id } }),
+    onSuccess: (_r, id) => {
+      setActiveSet((prev) => (prev === id ? null : prev));
+      queryClient.invalidateQueries({ queryKey: ["character-sets"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Could not delete that set."),
+  });
+
+  /** Loads a saved set's cast into the current selection. */
+  function applySet(id: string, ids: string[]) {
+    const usable = ids.filter((cid) => characters.some((c) => c.id === cid)).slice(0, 3);
+    setActiveSet(id);
+    setSelected(usable);
+    if (!usable.length) toast("That set's characters are no longer in your library.");
+  }
+
+  function saveCurrentSet() {
+    const name = setName.trim();
+    if (!name) {
+      toast.error("Give the set a name first.");
+      return;
+    }
+    if (!selected.length) {
+      toast.error("Select at least one character to save as a set.");
+      return;
+    }
+    setSaveMutation.mutate({ name, characterIds: selected });
+  }
+
 
 
   return (
