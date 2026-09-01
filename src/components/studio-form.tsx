@@ -459,7 +459,114 @@ export function StudioForm({ onGenerate }: { onGenerate: (config: GenerationConf
             onChange={(e) => handleUpload(e.target.files)}
           />
         </div>
+
+        <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">Reference match strength</p>
+            <p className="text-xs text-muted-foreground">
+              {strengthPreset.label} — {strengthPreset.hint}
+            </p>
+          </div>
+          <Slider
+            value={[refStrength]}
+            min={1}
+            max={5}
+            step={1}
+            onValueChange={([v]) => setRefStrength(v ?? 3)}
+            className="mt-4"
+            aria-label="Reference match strength"
+          />
+          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+            {REFERENCE_STRENGTHS.map((s) => (
+              <span key={s.value}>{s.label}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">Named reference sets</p>
+            <p className="text-xs text-muted-foreground">
+              Save this cast and reload it on any future run.
+            </p>
+          </div>
+
+          {sets.data && sets.data.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {sets.data.map((s) => (
+                <span
+                  key={s.id}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-1 py-0.5 pl-3 text-xs transition-colors",
+                    activeSet === s.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:border-input",
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="font-medium"
+                    onClick={() => applySet(s.id, s.characterIds)}
+                  >
+                    {s.name}
+                    <span className="ml-1 text-muted-foreground">({s.characterIds.length})</span>
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-6"
+                    title={`Delete "${s.name}"`}
+                    onClick={() => setDeleteMutation.mutate(s.id)}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Input
+              value={setName}
+              onChange={(e) => setSetName(e.target.value)}
+              placeholder="Name this cast, e.g. Kestrel crew"
+              className="h-9 max-w-xs text-sm"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={setSaveMutation.isPending}
+              onClick={saveCurrentSet}
+            >
+              {setSaveMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Save set
+            </Button>
+            {activeSet && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={setSaveMutation.isPending}
+                onClick={() => {
+                  const current = sets.data?.find((s) => s.id === activeSet);
+                  if (current)
+                    setSaveMutation.mutate({
+                      id: current.id,
+                      name: current.name,
+                      characterIds: selected,
+                    });
+                }}
+              >
+                Update active set
+              </Button>
+            )}
+          </div>
+        </div>
       </Card>
+
 
       <Card>
         <SectionHeading
